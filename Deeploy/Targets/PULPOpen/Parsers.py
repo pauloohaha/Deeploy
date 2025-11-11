@@ -4,10 +4,10 @@
 
 import math
 from typing import Tuple
-
+import numpy as np
 import onnx_graphsurgeon as gs
 
-from Deeploy.DeeployTypes import NetworkContext
+from Deeploy.DeeployTypes import NetworkContext, NodeParser
 from Deeploy.Targets.Generic.Parsers import Conv2DParser, GEMMParser, RQSConv1DParser, RQSConv2DParser, \
     RQSParserInterface
 
@@ -387,3 +387,27 @@ class PULPTallGEMMParser(PULPGEMMParser):
             return ctxt, False
 
         return newCtxt, True
+
+
+
+class CustomNopParser(NodeParser):
+
+    def __init__(self):
+        super().__init__()
+
+    def parseNode(self, node: gs.Node) -> (bool):
+        pass
+        return True
+
+    def parseNodeCtxt(self,
+                      ctxt: NetworkContext,
+                      node: gs.Node,
+                      channels_first: bool = True) -> Tuple[NetworkContext, bool]:
+        
+        for tensor, symName in zip(node.inputs, ['data_in', 'shape']):
+            self.operatorRepresentation[symName] = ctxt.lookup(tensor.name).name
+        for tensor, symName in zip(node.outputs, ['data_out', 'shape']):
+            self.operatorRepresentation[symName] = ctxt.lookup(tensor.name).name
+        
+
+        return ctxt, True

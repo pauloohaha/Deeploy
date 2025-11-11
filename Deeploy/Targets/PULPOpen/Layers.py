@@ -4,7 +4,7 @@
 
 from typing import List, Tuple
 
-from Deeploy.DeeployTypes import NodeMapper, Shape
+from Deeploy.DeeployTypes import NodeMapper, Shape, ONNXLayer
 from Deeploy.Targets.Generic.Layers import RQGEMMLayer, RQSConvLayer
 
 
@@ -41,3 +41,9 @@ class PULPRQSGEMMLayer(RQGEMMLayer):
         inputShapes[3] = [inputShapes[1][channelDim]]  # Channels out dimension of Kernel
 
         return (inputShapes, outputShapes)
+
+    
+class CustomNop(ONNXLayer):
+
+    def __init__(self, maps: List[NodeMapper]):
+        super().__init__(maps)

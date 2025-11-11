@@ -5,6 +5,38 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "singularity Attach to Py",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+          "host": "localhost",
+          "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app/Deeploy"
+        }
+      ],
+      "justMyCode": false
+    },
+    {
+      "name": "Attach to Py",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+          "host": "localhost",
+          "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "${workspaceFolder}"
+        }
+      ],
+      "justMyCode": false
+    },
+    {
       "name": "Deeploy Generate Untiled",
       "type": "debugpy",
       "request": "launch",
