@@ -35,7 +35,25 @@ target_compile_options(deeploygap9 PRIVATE
   -Wno-incompatible-pointer-types
 )
 
-target_link_libraries(deeploygap9 PUBLIC pmsis)
+# Add pulp-nn-mixed subdirectory
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../PULPOpen/third_party/pulp-nn-mixed ${CMAKE_CURRENT_BINARY_DIR}/pulp-nn-mixed)
+
+# Link pulp-nn-mixed to pmsis target (created by setupos() in main CMakeLists.txt)
+# This automatically provides the necessary include directories and compile flags
+target_link_libraries(pulp-nn-mixed PUBLIC pmsis)
+
+# Add NUM_CORES definition to pulp-nn-mixed
+target_compile_options(pulp-nn-mixed PUBLIC -DNUM_CORES=${NUM_CORES})
+
+# Add compile options to suppress warnings/errors in pulp-nn-mixed (GCC-specific)
+target_compile_options(pulp-nn-mixed PRIVATE
+  -Wno-unknown-pragmas
+  -Wno-error
+)
+
+
+target_link_libraries(deeploygap9 PUBLIC pulp-nn-mixed)
+
 
 #RW: Link PULP-NN
 #RW: Set PULP-NN version and bitwidth for pulp-nn-mixed

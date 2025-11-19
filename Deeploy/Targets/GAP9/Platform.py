@@ -32,6 +32,10 @@ from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser,
     PULPTallGEMMParser
 
 # Import GAP9-specific tiler bindings
+from Deeploy.Targets.GAP9.Templates import AllocateTemplate, FreeTemplate
+from Deeploy.Targets.GAP9.Layers import CustomSoftmaxAgg
+from Deeploy.Targets.GAP9.Parsers import CustomSoftmaxAggParser
+
 from Deeploy.Targets.GAP9.Tiler import (
     GAP9AddTilingReadyBindings,
     GAP9ConcatTilingReadyBindings,
@@ -64,6 +68,7 @@ from Deeploy.Targets.GAP9.Tiler import (
     GAP9SoftmaxTilingReadyBindings,
     GAP9TransposeTilingReadyBindings,
     GAP9UniformRQSTilingReadyBindings,
+    CustomSoftmaxAggTilingReadyBindings
 )
 
 # Create GAP9-specific NodeMappers
@@ -115,6 +120,7 @@ GAP9_SGDMapper = NodeMapper(SGDParser(), GAP9SGDTilingReadyBindings)
 GAP9_QuantMapper = NodeMapper(QuantParser(), BasicQuantBindings)
 GAP9_DequantMapper = NodeMapper(DequantParser(), BasicDequantBindings)
 GAP9_GEMMDequantMapper = NodeMapper(PULPGEMMParser(), BasicGEMMBindings)
+CustomSoftmaxAggMapper = NodeMapper(CustomSoftmaxAggParser(), CustomSoftmaxAggTilingReadyBindings)
 
 # GAP9-specific mapping using ClDma
 GAP9Mapping = {
@@ -155,7 +161,8 @@ GAP9Mapping = {
     'SoftmaxGrad': SoftmaxGradLayer([GAP9_SoftmaxGradMapper]),
     'SoftmaxCrossEntropyLoss': SoftmaxCrossEntropyLossLayer([GAP9_SoftmaxCrossEntropyLossMapper]),
     'SoftmaxCrossEntropyLossGrad': SoftmaxCrossEntropyLossGradLayer([GAP9_SoftmaxCrossEntropyLossGradMapper]),
-    'SGD': SGDLayer([GAP9_SGDMapper])
+    'SGD': SGDLayer([GAP9_SGDMapper]),
+    "CustomSoftmaxAgg": CustomSoftmaxAgg([CustomSoftmaxAggMapper])
 }
 
 
@@ -232,7 +239,6 @@ class GAP9StructBuffer(StructBuffer):
 _includeList = [
     "pmsis.h",
     "DeeployGAP9Math.h",
-    "pulp_nn_kernels.h"
 ]
 
 
