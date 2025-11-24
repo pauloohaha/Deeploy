@@ -35,8 +35,14 @@ target_compile_options(deeploygap9 PRIVATE
   -Wno-incompatible-pointer-types
 )
 
-# Add pulp-nn-mixed subdirectory
+
+#RW: Link PULP-NN
+#RW: Set PULP-NN version and bitwidth for pulp-nn-mixed
+set(PULPNNVERSION XPULPV2)
+set(PULPNNBITWIDTH 32)
+add_compile_definitions(NUM_CORES=${NUM_CORES})
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../PULPOpen/third_party/pulp-nn-mixed ${CMAKE_CURRENT_BINARY_DIR}/pulp-nn-mixed)
+
 
 # Link pulp-nn-mixed to pmsis target (created by setupos() in main CMakeLists.txt)
 # This automatically provides the necessary include directories and compile flags
@@ -54,13 +60,6 @@ target_compile_options(pulp-nn-mixed PRIVATE
 
 target_link_libraries(deeploygap9 PUBLIC pulp-nn-mixed)
 
-
-#RW: Link PULP-NN
-#RW: Set PULP-NN version and bitwidth for pulp-nn-mixed
-set(PULPNNVERSION XPULPV2)
-set(PULPNNBITWIDTH 32)
-add_compile_definitions(NUM_CORES=${NUM_CORES})
-add_subdirectory(third_party/pulp-nn-mixed)
 
 #RW: GCC not recognizing -Wno-typedef-redefinition defined in PULP-NN CMakelist
 target_compile_options(pulp-nn-mixed PRIVATE -Wno-error)

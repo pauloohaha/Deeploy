@@ -70,6 +70,8 @@ from Deeploy.Targets.PULPOpen.TileConstraints.SoftmaxCrossEntropyTileConstraint 
     SoftmaxCrossEntropyGradTileConstraint, SoftmaxCrossEntropyTileConstraint
 from Deeploy.TilingExtension.TilerExtension import TilingReadyNodeBindings
 
+from Deeploy.Targets.GAP9.TileConstraints.CustomSoftMaxAggConstraint import CustomSoftmaxAggTileConstraint
+
 # GAP9-specific tiling ready bindings using ClDma
 GAP9RQSConv2DTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9RQSConv2DBindings,
                                                            tileConstraint = RQConv2DTileConstraint())
@@ -168,4 +170,4 @@ GAP9SGDTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9SGDBindi
 
 
 CustomSoftmaxAggTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomSoftmaxAggBindings,
-                                                     tileConstraint = NOPTileConstraint())
+                                                     tileConstraint = CustomSoftmaxAggTileConstraint())
