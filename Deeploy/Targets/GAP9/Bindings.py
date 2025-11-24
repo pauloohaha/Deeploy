@@ -30,6 +30,7 @@ from Deeploy.Targets.PULPOpen.Bindings import TilingCallClosure, ForkClosure, \
     MemoryAwareFunctionCallClosure, L3MemoryAwareFunctionCallClosure, MemoryAwareForkTransformer
 from Deeploy.Targets.PULPOpen.DataTypes import PULPDMAFuture
 from Deeploy.Targets.GAP9.DMA.ClDma import ClDma
+from Deeploy.Targets.GAP9.Templates import CustomSoftmaxAgg 
 
 # Import templates from PULPOpen and Generic
 from Deeploy.Targets.Generic.Templates import AddTemplate, ConcatTemplate, DequantTemplate, FloatReduceMeanTemplate, \
@@ -401,3 +402,8 @@ GAP9DequantBindings = [
     NodeBinding(DequantChecker([PointerClass(int32_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
                 GAP9Transformer),
 ]
+
+CustomSoftmaxAggBindings = [
+  NodeBinding(GatherChecker([PointerClass(float32_t), PointerClass(type)], [PointerClass(float32_t)]),
+                CustomSoftmaxAgg.referenceTemplate, GAP9Transformer) for type in IntegerDataTypes
+] #use gather checker cause the output has the same range, the kk input should be integer

@@ -54,6 +54,7 @@ from Deeploy.Targets.GAP9.Bindings import (
     GAP9SoftmaxGradBindings,
     GAP9TransposeBindings,
     GAP9UniformRQSBindings,
+    CustomSoftmaxAggBindings
 )
 from Deeploy.Targets.PULPOpen.TileConstraints.ConvTileConstraint import Conv2DTileConstraint, RQConv2DTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.DWConvTileConstraint import DWConv2DTileConstraint
@@ -164,3 +165,7 @@ GAP9ReduceSumTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9Re
 
 GAP9SGDTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9SGDBindings,
                                                      tileConstraint = SGDTileConstraint())
+
+
+CustomSoftmaxAggTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomSoftmaxAggBindings,
+                                                     tileConstraint = NOPTileConstraint())
