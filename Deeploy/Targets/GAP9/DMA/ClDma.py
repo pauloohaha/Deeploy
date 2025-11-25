@@ -37,8 +37,8 @@ class ClDma(AsyncDma):
     """
 
     _transferTemplates = {
-        1: NodeTemplate("pi_cl_dma_cmd(${ext}, ${loc}, ${size}, ${dir}, &${future});"),
-        2: NodeTemplate("pi_cl_dma_cmd_2d(${ext}, ${loc}, ${size}, ${stride}, ${length}, ${dir}, &${future});"),
+        1: NodeTemplate("pi_cl_dma_cmd((uint32_t)${ext}, (uint32_t)${loc}, (uint32_t)${size}, ${dir}, &${future});"),
+        2: NodeTemplate("pi_cl_dma_cmd_2d((uint32_t)${ext}, (uint32_t)${loc}, (uint32_t)${size}, ${stride}, ${length}, ${dir}, &${future});"),
     }
     _waitingStrategy = PerTensorWaitingStrategy(ClDmaFuture)
 

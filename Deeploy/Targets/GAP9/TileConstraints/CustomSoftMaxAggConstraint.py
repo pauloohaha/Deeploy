@@ -20,8 +20,8 @@ class CustomSoftmaxAggTileConstraint(TileConstraint):
 
     @staticmethod
     def addGeometricalConstraint(tilerModel: TilerModel, parseDict: Dict, ctxt: NetworkContext) -> TilerModel:
-        inputNetBufferName  = parseDict['data_in_1']
-        inputKKBufferName   = parseDict['data_in_2']
+        inputNetBufferName  = parseDict['data_in_net']
+        inputKKBufferName   = parseDict['data_in_kk']
         outputBufferName    = parseDict['data_out']
 
         shapeLen = len(ctxt.lookup(inputNetBufferName).shape)
@@ -43,24 +43,27 @@ class CustomSoftmaxAggTileConstraint(TileConstraint):
 
         return tilerModel
 
-    # @staticmethod
-    # def addPolicyConstraint(tilerModel: TilerModel, parseDict: Dict, ctxt: NetworkContext) -> TilerModel:
-    #     inputNetBufferName  = parseDict['data_in_1']
-    #     inputKKBufferName   = parseDict['data_in_2']
-    #     inputBuffer = ctxt.lookup(inputNetBufferName)
+    @staticmethod
+    def addPolicyConstraint(tilerModel: TilerModel, parseDict: Dict, ctxt: NetworkContext) -> TilerModel:
+        inputNetBufferName  = parseDict['data_in_net']
+        inputKKBufferName   = parseDict['data_in_kk']
+        inputNetBuffer  = ctxt.lookup(inputNetBufferName)
+        inputKKBuffer   = ctxt.lookup(inputKKBufferName)
 
-    #     lastDimLength = inputBuffer.shape[-1]
-    #     lastDimIdx = len(inputBuffer.shape) - 1
-    #     lastDimVar = tilerModel.getTensorDimVar(tensorName = inputBufferName, dimIdx = lastDimIdx)
+        # Get the full size of kk's dimension 0
+        kkDim0FullSize = inputKKBuffer.shape[0]
 
-    #     # tilerModel.addTensorNumOfEltToModel(ctxt, inputBufferName)
-    #     # numVars = tilerModel.getTensorNumberOfEltVar(inputBufferName)
+        # Get the tiling variable for kk's dimension 0
+        kkDim0Var = tilerModel.getTensorDimVar(tensorName=inputKKBufferName, dimIdx=0)
 
-    #     # tilerModel.addMinTileSizeConstraint(parseDict, 'size', numVars, 8*lastDimLength)
+        # tilerModel.addTensorNumOfEltToModel(ctxt, inputBufferName)
+        # numVars = tilerModel.getTensorNumberOfEltVar(inputBufferName)
 
-    #     tilerModel.addConstraint(lastDimVar == lastDimLength)
+        # tilerModel.addMinTileSizeConstraint(parseDict, 'size', numVars, 8*lastDimLength)
 
-    #     return tilerModel
+        tilerModel.addConstraint(kkDim0FullSize == kkDim0Var)
+
+        return tilerModel
 
     # @staticmethod
     # def constructSymbolicNodeRep(tilerModel: TilerModel, parseDict: Dict,
@@ -83,7 +86,7 @@ class CustomSoftmaxAggTileConstraint(TileConstraint):
             operatorRepresentation: OperatorRepresentation) -> Tuple[VariableReplacementScheme, TilingSchedule]:
         outputCubes = [cube.rectangle for cube in absoluteOutputCubes]
 
-        addrNames = ["data_in_1", "data_in_2", "data_out"]
+        addrNames = ["data_in_net", "data_in_kk", "data_out"]
         inputBaseOffsets, outputBaseOffsets = cls.extractBaseAddr(tilingSolution, targetMemLevel,
                                                                   operatorRepresentation, addrNames)
 
@@ -99,7 +102,7 @@ class CustomSoftmaxAggTileConstraint(TileConstraint):
         outputLoadSchedule = []
 
         for cube in outputCubes:
-            inputLoadSchedule.append({"data_in_1": cube, "data_in_2": cube})
+            inputLoadSchedule.append({"data_in_net": cube, "data_in_kk": cube})
 
         for out in outputCubes:
             outputLoadSchedule.append({"data_out": out})

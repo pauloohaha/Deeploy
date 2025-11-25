@@ -23,7 +23,7 @@ class CustomSoftmaxAggParser(NodeParser):
                       node: gs.Node,
                       channels_first: bool = True) -> Tuple[NetworkContext, bool]:
         
-        for tensor, symName in zip(node.inputs, ['data_in_1', 'data_in_2']):
+        for tensor, symName in zip(node.inputs, ['data_in_net', 'data_in_kk']):
             self.operatorRepresentation[symName] = ctxt.lookup(tensor.name).name
         for tensor, symName in zip(node.outputs, ['data_out']):
             self.operatorRepresentation[symName] = ctxt.lookup(tensor.name).name

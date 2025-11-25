@@ -48,6 +48,7 @@ from Deeploy.Targets.PULPOpen.Templates import ConvTemplate, DMASliceTemplate, F
 from Deeploy.Targets.PULPOpen.TypeCheckers import PULPConvChecker, PULPLinearChecker, PULPMaxPoolChecker, \
     PULPRequantShiftChecker
 
+from Deeploy.Targets.GAP9.CodeTransformationPasses import AnnotateTransientBuffersToL1CodeTransform
 
 # GAP9-specific transformer using cl_dma.h API
 GAP9Transformer = CodeTransformation([
@@ -81,6 +82,21 @@ GAP9ClusterTransformer = CodeTransformation([
     TilingVariableReplacement("L2"),
     MemoryAwareFunctionCallClosure(writeback = False, generateStruct = True),
     PULPL3Tiling("L3", "L2", gap9L3DmaHack),  # Use GAP9-specific L3 DMA
+    PULPProfileUntiled(),
+    ArgumentStructGeneration(),
+    L3MemoryAwareFunctionCallClosure(writeback = False),
+    MemoryManagementGeneration("L2"),
+    MemoryManagementGeneration("L3.*"),
+    MemoryManagementGeneration(),
+])
+
+# L2-only transformer with L1 transient buffers
+GAP9L2OnlyTransformerL1Transient = CodeTransformation([
+    AnnotateTransientBuffersToL1CodeTransform("L1", overrideExisting=True),  # Annotate transient buffers to L1
+    MemoryManagementGeneration("L1"),                  # Manage L1 memory first
+    TilingVariableReplacement("L2"),
+    MemoryAwareFunctionCallClosure(writeback = False, generateStruct = True),
+    PULPL3Tiling("L3", "L2", gap9L3DmaHack),  # Only L3↔L2 DMA
     PULPProfileUntiled(),
     ArgumentStructGeneration(),
     L3MemoryAwareFunctionCallClosure(writeback = False),
@@ -404,6 +420,6 @@ GAP9DequantBindings = [
 ]
 
 CustomSoftmaxAggBindings = [
-  NodeBinding(GatherChecker([PointerClass(float32_t), PointerClass(type)], [PointerClass(float32_t)]),
-                CustomSoftmaxAgg.referenceTemplate, GAP9Transformer) for type in IntegerDataTypes
+  NodeBinding(GatherChecker([PointerClass(float32_t), PointerClass(int32_t)], [PointerClass(float32_t)]),
+                CustomSoftmaxAgg.referenceTemplate, GAP9L2OnlyTransformerL1Transient)
 ] #use gather checker cause the output has the same range, the kk input should be integer

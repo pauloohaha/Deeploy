@@ -20,7 +20,14 @@ target_include_directories(deeploygap9
   PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}/inc
   ${CMAKE_CURRENT_LIST_DIR}/../PULPOpen/inc
+  ${TILER_INC}
+  ${TILER_EMU_INC}
+  ${TILER_CNN_KERNEL_PATH_FP32}
+  ${TILER_CNN_KERNEL_PATH_FP16}
+  ${TILER_DSP_KERNEL_V2_PATH}
+  ${TILER_DSP_KERNEL_V2_PATH}/FastMathFunctions
 )
+
 
 target_compile_options(deeploygap9 PUBLIC
     -DNUM_CORES=${NUM_CORES}
@@ -33,6 +40,8 @@ target_compile_options(deeploygap9 PRIVATE
   -Wno-type-limits
   -Wno-attributes
   -Wno-incompatible-pointer-types
+  -Og
+  -g
 )
 
 
