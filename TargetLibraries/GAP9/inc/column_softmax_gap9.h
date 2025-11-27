@@ -28,5 +28,8 @@ typedef struct {
 
 void KerColSoftMax8Bits_SQ8 (KerColSoftMax_SQ8_T *Arg);
 void KerColSoftMax_fp32 (void * slave_arg);
-void SoftMaxAgg_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_output_buffer, float *L1_edge_in_buffer, float *L1_edge_out_buffer, int *collected_edge_buffer);
+void SoftMaxAgg_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_output_buffer,
+                              float *L1_edge_in_ping_buffer, float *L1_edge_out_ping_buffer,
+                              float *L1_edge_in_pong_buffer, float *L1_edge_out_pong_buffer,
+                              int *collected_edge_ping_buffer, int * collected_edge_pong_buffer);
 #endif

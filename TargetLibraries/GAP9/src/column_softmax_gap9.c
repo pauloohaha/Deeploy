@@ -4,9 +4,14 @@ Author: Pu Deng <pudeng@iis.ethz.ch>
 
 #include "column_softmax_gap9.h"
 
+//#define PERF_PROFILE
+
 static int CoreCountDynamic = 1;
 static int ActiveCore = gap_ncore();
 
+#ifdef PERF_PROFILE
+static PI_L2 uint32_t CoreActiveCnt[8];
+#endif
 
 static inline unsigned int __attribute__((always_inline)) ChunkSize(unsigned int X)
 
@@ -142,8 +147,7 @@ void KerColSoftMax8Bits_SQ8 (KerColSoftMax_SQ8_T *Arg)
 
 void KerColSoftMax_fp32 (void * slave_arg)
 
-{
-
+{  
   KerColSoftMax_fp32_T *Arg = (KerColSoftMax_fp32_T *) slave_arg;
   float * __restrict__ In   = (float *) Arg->In;
 	float * __restrict__ Out  = (float *) Arg->Out;
@@ -151,6 +155,12 @@ void KerColSoftMax_fp32 (void * slave_arg)
 	int Feat = Arg->Feat; //num rows
   float M, Sum, InvSum;
   unsigned int CoreId = gap_coreid();
+
+#ifdef PERF_PROFILE
+  pi_perf_conf( 1 << PI_PERF_ACTIVE_CYCLES);
+  pi_perf_reset();
+  pi_perf_start();
+#endif
 
   int round = (N + 7) / (1 * 8); //8 cores, each process 1 element each round, 8 elements per round, ceiling
 
@@ -186,59 +196,137 @@ void KerColSoftMax_fp32 (void * slave_arg)
 
   gap_waitbarrier(0);
 
+#ifdef PERF_PROFILE
+  pi_perf_stop();
+  CoreActiveCnt[CoreId] = pi_perf_read(PI_PERF_ACTIVE_CYCLES);
+#endif
 
 }
 
-void SoftMaxAgg_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_output_buffer, float *L1_edge_in_buffer, float *L1_edge_out_buffer, int *collected_edge_buffer) {
+void SoftMaxAgg_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_output_buffer, 
+                              float *L1_edge_in_ping_buffer, float *L1_edge_out_ping_buffer, 
+                              float *L1_edge_in_pong_buffer, float *L1_edge_out_pong_buffer, 
+                              int *collected_edge_ping_buffer, int * collected_edge_pong_buffer) {
+
+    int debug_in_flight_dma = 0;
+
+    pi_cl_dma_cmd_t data_in_ping_dma_handles; //maximum transfer MAX_EDGE_PER_PATCH edges
+    pi_cl_dma_cmd_t data_in_pong_dma_handles; 
+    pi_cl_dma_cmd_t data_out_ping_dma_handles; 
+    pi_cl_dma_cmd_t data_out_pong_dma_handles; 
+    int patch_kk = FRAME_ID * PATCH_PER_FRAME + 0;//initially start from the first patch
+    int edge_buff_write_idx[PATCH_PER_FRAME];
+    int previous_iteration_out_dma_cnt = 0; //record the num of dma transfer for data out in the previous iteration, for waiting
+
+    /*Ping Pong arrat*/
+    float *L1_edge_in_buffer[2]   = {L1_edge_in_ping_buffer, L1_edge_in_pong_buffer};
+    float *L1_edge_out_buffer[2]  = {L1_edge_out_ping_buffer, L1_edge_out_pong_buffer};
+    int *collected_edge_buffer[2] = {collected_edge_ping_buffer, collected_edge_pong_buffer};
+    pi_cl_dma_cmd_t *data_in_dma_handles[2]  = {&data_in_ping_dma_handles, &data_in_pong_dma_handles};
+    pi_cl_dma_cmd_t *data_out_dma_handles[2] = {&data_out_ping_dma_handles, &data_out_pong_dma_handles};
+
+    /* Initial Ping buffer setup*/
+    edge_buff_write_idx[0] = 0; //reset counter
+    for (int kk_idx = 0; kk_idx < LEN; kk_idx++){
+        if(L2_KK_buffer[kk_idx] == patch_kk){
+            /*this edge belongs to the patch being processed*/
+            if(edge_buff_write_idx[0] >= MAX_EDGE_PER_PATCH) {
+                printf("L1 egde buffer overflow!\n");
+                return;
+            }
+            collected_edge_buffer[0][edge_buff_write_idx[0]] = kk_idx;
+            edge_buff_write_idx[0] += 1;//increment the idx after an edge is written into the buffer
+        }
+    }
+    
+    /* issue the 2d data transfer in 1 shot */
+    if(edge_buff_write_idx[0] != 0){
+      pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[0*DIM], (uint32_t)L1_edge_in_buffer[0], //ext addr, loc addr, 
+                        edge_buff_write_idx[0] * (uint32_t)DIM * sizeof(float), // total size
+                        (uint32_t)DIM * sizeof(float) * PATCH_PER_FRAME,        // 2d stride
+                        (uint32_t)DIM * sizeof(float),                          // length per section
+                        PI_CL_DMA_DIR_EXT2LOC,  data_in_dma_handles[0]);
+    }
 
     for (int patch_id = 0; patch_id < PATCH_PER_FRAME; patch_id++){
+        int compute_bin = patch_id % 2; //0 for currently computing Ping, 1 for currently computing Pong 
+        int data_bin    = (patch_id+1) % 2; //the buffer that is currently moving data
         /* process edges from a patch*/
-        int patch_kk = FRAME_ID * PATCH_PER_FRAME + patch_id;
-        int edge_buff_write_idx = 0; //count how many edges have been written into the buffer
+        patch_kk = FRAME_ID * PATCH_PER_FRAME + patch_id;
+        edge_buff_write_idx[patch_id + 1] = 0; //reset the edge counter for next iteration
 
-        /* collect edges from the current patch to the L1 buffer*/
-        // Piao: TODO: change to DMA
-        for (int kk_idx = 0; kk_idx < LEN; kk_idx++){
-            if(L2_KK_buffer[kk_idx] == patch_kk){
-                /*this edge belongs to the patch being processed*/
-                if(edge_buff_write_idx >= MAX_EDGE_PER_PATCH) {
+        /* collect edges from the current patch to the L1 buffer */
+        /* set up data in transfer for the next iteration, except for the last iteration */
+        if(patch_id < PATCH_PER_FRAME - 1){
+          for (int kk_idx = 0; kk_idx < LEN; kk_idx++){
+            if(L2_KK_buffer[kk_idx] == patch_kk + 1){
+                /*this edge belongs to the patch being processed next iteration*/
+                if(edge_buff_write_idx[patch_id + 1] >= MAX_EDGE_PER_PATCH) {
                     printf("L1 egde buffer overflow!\n");
                     return;
                 }
-                
-                collected_edge_buffer[edge_buff_write_idx] = kk_idx;
 
-                for(int copy_id = 0; copy_id < DIM; copy_id++){
-                    L1_edge_in_buffer[edge_buff_write_idx*DIM+copy_id] = L2_net_buffer[kk_idx*DIM+copy_id];
-                }
-                edge_buff_write_idx += 1;//increment the idx after an edge is written into the buffer
+                collected_edge_buffer[data_bin][edge_buff_write_idx[patch_id + 1]] = kk_idx;
+                edge_buff_write_idx[patch_id + 1] += 1;//increment the idx after an edge is written into the buffer
             }
+          }
         }
         
+        if(edge_buff_write_idx[patch_id + 1] != 0){
+          pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[(patch_id+1)*DIM], (uint32_t)L1_edge_in_buffer[data_bin], //ext addr, loc addr
+                        edge_buff_write_idx[patch_id + 1] * (uint32_t)DIM * sizeof(float),  // total size
+                        (uint32_t)DIM * sizeof(float) * PATCH_PER_FRAME,                    // 2d stride
+                        (uint32_t)DIM * sizeof(float),                                      // length per section
+                        PI_CL_DMA_DIR_EXT2LOC,  data_in_dma_handles[data_bin]);
+        }
+
         /* no edge from the current patch */
-        if(edge_buff_write_idx == 0){
+        if(edge_buff_write_idx[patch_id] == 0){
            continue;
         }
 
-        KerColSoftMax_fp32_T softmax_arg;
-        softmax_arg.In    = L1_edge_in_buffer;
-        softmax_arg.Out   = L1_edge_out_buffer;
-        softmax_arg.N     = DIM;
-        softmax_arg.Feat  = edge_buff_write_idx;
+        /* wait for the input data dma finish before start compute */
+        pi_cl_dma_cmd_wait(data_in_dma_handles[compute_bin]);
 
-        
+        /* wait for the output data dma two iterations before to finis */
+        if(patch_id >= 2){
+          /*only need to start checking previous output dma transfer starting 3rd iteration*/
+          pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+        }
+       
+
+
+        KerColSoftMax_fp32_T softmax_arg;
+        softmax_arg.In    = L1_edge_in_buffer[compute_bin];
+        softmax_arg.Out   = L1_edge_out_buffer[compute_bin];
+        softmax_arg.N     = DIM;
+        softmax_arg.Feat  = edge_buff_write_idx[patch_id];
+#ifdef PERF_PROFILE
+        for (int i = 0; i < 8; i++){
+          CoreActiveCnt[i] = 0;
+        }
+        pi_perf_conf(1 << PI_PERF_CYCLES | 1 << PI_PERF_ACTIVE_CYCLES);
+        pi_perf_reset();
+        pi_perf_start();
+#endif
         /* dispatch compute workload to the cluster */ 
         pi_cl_team_fork(pi_cl_cluster_nb_cores(), KerColSoftMax_fp32, (void *)&softmax_arg);
-
         
-        /* move the result back to L2 result buffer */
-        // Piao: TODO: change to DMA
-        for(int edge_id = 0; edge_id < edge_buff_write_idx; edge_id++){
-            int egde_L2_buffer_id = collected_edge_buffer[edge_id];
-            for(int copy_id = 0; copy_id < DIM; copy_id++){
-                L2_output_buffer[egde_L2_buffer_id*DIM+copy_id] = L1_edge_out_buffer[edge_id*DIM+copy_id];
-            }
+#ifdef PERF_PROFILE
+        pi_perf_stop();
+        uint32_t cycles = pi_perf_read(PI_PERF_ACTIVE_CYCLES);
+        uint32_t tim_cycles = pi_perf_read(PI_PERF_CYCLES);
+        printf("Perf : %d cycles Timer : %d cycles, Feat:%d\n", cycles, tim_cycles, edge_buff_write_idx);
+        for (int i = 0; i < 8; i++){
+          printf("Core: %d, active cycle:%d\n", i, CoreActiveCnt[i]);
         }
+#endif
+        /* move the result back to L2 result buffer for the current iteration */
+        pi_cl_dma_cmd_2d((uint32_t)&L2_output_buffer[patch_id*DIM], (uint32_t)L1_edge_out_buffer[compute_bin], //ext addr, loc addr, 
+                      edge_buff_write_idx[patch_id] * (uint32_t)DIM * sizeof(float),  //total size
+                      (uint32_t)DIM * sizeof(float) * PATCH_PER_FRAME,                // 2d stride
+                      (uint32_t)DIM * sizeof(float),                                  // length per section
+                      PI_CL_DMA_DIR_LOC2EXT,  data_out_dma_handles[compute_bin]);
     }
 
 }
