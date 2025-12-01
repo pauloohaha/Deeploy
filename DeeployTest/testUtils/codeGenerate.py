@@ -227,13 +227,14 @@ def generateL3HexDump(deployer: NetworkDeployer, path: str, test_inputs: List, t
 
     def dumpBuffer(buf: VariableBuffer, path: str):
 
-        if "input" in buf.name:
-            idx = int(buf.name.split("_")[1])
+        # Check if buffer name matches exactly "input_N" or "output_N" pattern
+        parts = buf.name.split("_")
+        if len(parts) == 2 and parts[0] == "input" and parts[1].isdigit():
+            idx = int(parts[1])
             array = _shapeBroadcast(deployer.ctxt, test_inputs[idx], f"input_{idx}")
 
-        elif "output" in buf.name:
-            _list = buf.name.split("_")
-            idx = int(_list[1])
+        elif len(parts) == 2 and parts[0] == "output" and parts[1].isdigit():
+            idx = int(parts[1])
             array = _shapeBroadcast(deployer.ctxt, test_outputs[idx], f"output_{idx}")
 
         elif isinstance(buf, ConstantBuffer):
@@ -264,6 +265,12 @@ def generateTestNetwork(deployer: NetworkDeployer, test_inputs: List[np.ndarray]
 
     # Create input and output vectors
     os.makedirs(dumpdir, exist_ok = True)
+
+    # Clean up old hex files to avoid confusion between L2/L3 modes
+    import shutil
+    hex_dir = os.path.join(dumpdir, 'hex')
+    if os.path.exists(hex_dir):
+        shutil.rmtree(hex_dir)
 
     testInputStr = generateTestInputsHeader(deployer, test_inputs)
     with open(f'{dumpdir}/testinputs.h', "w") as f:
