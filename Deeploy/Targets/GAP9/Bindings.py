@@ -26,9 +26,9 @@ from Deeploy.Targets.PULPOpen.CodeTransformationPasses.PULPClusterTiling import 
 from Deeploy.Targets.PULPOpen.CodeTransformationPasses.PULPL3Tiling import PULPL3Tiling
 from Deeploy.Targets.PULPOpen.CodeTransformationPasses.PULPProfileUntiled import PULPProfileUntiled
 from Deeploy.Targets.PULPOpen.Bindings import TilingCallClosure, ForkClosure, \
-    MemoryAwareFunctionCallClosure, L3MemoryAwareFunctionCallClosure, MemoryAwareForkTransformer
+    MemoryAwareFunctionCallClosure, L3MemoryAwareFunctionCallClosure, MemoryAwareForkTransformer, ForkTransformer
 from Deeploy.Targets.PULPOpen.DataTypes import PULPDMAFuture
-from Deeploy.Targets.GAP9.Templates import CustomSoftmaxAgg 
+from Deeploy.Targets.GAP9.Templates import CustomColSoftmax, CustomColSum, CustomColScatter, CustomElementMul
 from Deeploy.Targets.GAP9.DMA.MchanDma import GAP9MchanDma
 from Deeploy.Targets.GAP9.DMA.L3Dma import gap9L3DmaHack
 
@@ -89,6 +89,7 @@ GAP9ClusterTransformer = CodeTransformation([
     MemoryManagementGeneration("L3.*"),
     MemoryManagementGeneration(),
 ])
+
 
 # L2-only transformer with L1 transient buffers
 GAP9L2OnlyTransformerL1Transient = CodeTransformation([
@@ -419,7 +420,22 @@ GAP9DequantBindings = [
                 GAP9Transformer),
 ]
 
-CustomSoftmaxAggBindings = [
+CustomColSoftmaxBindings = [
   NodeBinding(GatherChecker([PointerClass(float32_t), PointerClass(int32_t)], [PointerClass(float32_t)]),
-                CustomSoftmaxAgg.referenceTemplate, GAP9L2OnlyTransformerL1Transient)
+                CustomColSoftmax.referenceTemplate, GAP9L2OnlyTransformerL1Transient)
 ] #use gather checker cause the output has the same range, the kk input should be integer
+
+CustomColSumBindings = [
+  NodeBinding(GatherChecker([PointerClass(float32_t), PointerClass(int32_t)], [PointerClass(float32_t)]),
+                CustomColSum.referenceTemplate, GAP9L2OnlyTransformerL1Transient)
+] #use gather checker cause the output has the same range, the kk input should be integer
+
+CustomColScatterBindings = [
+  NodeBinding(GatherChecker([PointerClass(float32_t), PointerClass(float32_t), PointerClass(int32_t)], [PointerClass(float32_t)]),
+                CustomColScatter.referenceTemplate, GAP9L2OnlyTransformerL1Transient)
+] #use gather checker cause the output has the same range, the kk input should be integer
+
+CustomElementMulBindings =  [
+    NodeBinding(MulChecker([PointerClass(float32_t), PointerClass(float32_t)], [PointerClass(float32_t)]),
+                CustomElementMul.referenceTemplate, GAP9Transformer)
+]

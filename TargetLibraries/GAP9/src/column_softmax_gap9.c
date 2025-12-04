@@ -139,11 +139,10 @@ void KerColSoftMax8Bits_SQ8 (KerColSoftMax_SQ8_T *Arg)
 }
 
 #define FRAME_ID  0
-#define PATCH_PER_FRAME  16
-#define MAX_EDGE_PER_PATCH  10
+#define MAX_PATCH_PER_FRAME  4
+#define MAX_EDGE_PER_PATCH  5
 #define DIM   ( 384 )
 #define LEN   ( 100 )
-
 
 void KerColSoftMax_fp32 (void * slave_arg)
 
@@ -203,86 +202,140 @@ void KerColSoftMax_fp32 (void * slave_arg)
 
 }
 
+
+void KerColSum_fp32 (void * slave_arg)
+
+{  
+  KerColSoftMax_fp32_T *Arg = (KerColSoftMax_fp32_T *) slave_arg;
+  float * __restrict__ In   = (float *) Arg->In;
+	float * __restrict__ Out  = (float *) Arg->Out;
+	int N = Arg->N; //num columns
+	int Feat = Arg->Feat; //num rows
+  unsigned int CoreId = gap_coreid();
+
+#ifdef PERF_PROFILE
+  pi_perf_conf( 1 << PI_PERF_ACTIVE_CYCLES);
+  pi_perf_reset();
+  pi_perf_start();
+#endif
+
+  int round = (N + 7) / (1 * 8); //8 cores, each process 1 element each round, 8 elements per round, ceiling
+
+  for (int r = 0; r < round; r++) {
+    /* Each round of compute */
+    int column_id = r * 1 * 8 + CoreId;
+    if (column_id >= N) break; //this core has finished alread
+    
+    /* Find Sum */
+    Out[column_id] = In[column_id + 0 * N];
+
+    for (int row = 1; row < Feat; row++) {
+      Out[column_id] += In[column_id + row * N];
+    }
+  }
+
+  gap_waitbarrier(0);
+
+#ifdef PERF_PROFILE
+  pi_perf_stop();
+  CoreActiveCnt[CoreId] = pi_perf_read(PI_PERF_ACTIVE_CYCLES);
+#endif
+
+}
+
+
+void KerCatter_fp32 (void * slave_arg)
+
+{  
+  KerColScatter_fp32_T *Arg = (KerColScatter_fp32_T *) slave_arg;
+  float * __restrict__ In   = (float *) Arg->In;
+  float* __restrict__ In_agg = (float *) Arg->In_agg;
+	int N = Arg->N; //num columns
+	int Feat = Arg->Feat; //num rows
+  float M, Sum, InvSum;
+  unsigned int CoreId = gap_coreid();
+
+#ifdef PERF_PROFILE
+  pi_perf_conf( 1 << PI_PERF_ACTIVE_CYCLES);
+  pi_perf_reset();
+  pi_perf_start();
+#endif
+
+  int round = (N + 7) / (1 * 8); //8 cores, each process 1 element each round, 8 elements per round, ceiling
+
+  for (int r = 0; r < round; r++) {
+    /* Each round of compute */
+    int column_id = r * 1 * 8 + CoreId;
+    if (column_id >= N) break; //this core has finished alread
+    
+    /* scatter add */
+    for (int row = 0; row < Feat; row++) {
+      In[column_id + row * N] += In_agg[column_id];
+    }
+  }
+
+  gap_waitbarrier(0);
+
+#ifdef PERF_PROFILE
+  pi_perf_stop();
+  CoreActiveCnt[CoreId] = pi_perf_read(PI_PERF_ACTIVE_CYCLES);
+#endif
+
+}
+
 void SoftMaxAgg_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_output_buffer, 
                               float *L1_edge_in_ping_buffer, float *L1_edge_out_ping_buffer, 
-                              float *L1_edge_in_pong_buffer, float *L1_edge_out_pong_buffer, 
-                              int *collected_edge_ping_buffer, int * collected_edge_pong_buffer) {
+                              float *L1_edge_in_pong_buffer, float *L1_edge_out_pong_buffer,
+                              void (*function)(void *) ) {
 
-    int debug_in_flight_dma = 0;
+    pi_cl_dma_cmd_t data_in_ping_dma_handle; //maximum transfer MAX_EDGE_PER_PATCH edges
+    pi_cl_dma_cmd_t data_in_pong_dma_handle; 
+    pi_cl_dma_cmd_t data_out_ping_dma_handle; 
+    pi_cl_dma_cmd_t data_out_pong_dma_handle; 
 
-    pi_cl_dma_cmd_t data_in_ping_dma_handles; //maximum transfer MAX_EDGE_PER_PATCH edges
-    pi_cl_dma_cmd_t data_in_pong_dma_handles; 
-    pi_cl_dma_cmd_t data_out_ping_dma_handles; 
-    pi_cl_dma_cmd_t data_out_pong_dma_handles; 
-    int patch_kk = FRAME_ID * PATCH_PER_FRAME + 0;//initially start from the first patch
-    int edge_buff_write_idx[PATCH_PER_FRAME];
-    int previous_iteration_out_dma_cnt = 0; //record the num of dma transfer for data out in the previous iteration, for waiting
-
-    /*Ping Pong arrat*/
+    /*Ping Pong array*/
     float *L1_edge_in_buffer[2]   = {L1_edge_in_ping_buffer, L1_edge_in_pong_buffer};
     float *L1_edge_out_buffer[2]  = {L1_edge_out_ping_buffer, L1_edge_out_pong_buffer};
-    int *collected_edge_buffer[2] = {collected_edge_ping_buffer, collected_edge_pong_buffer};
-    pi_cl_dma_cmd_t *data_in_dma_handles[2]  = {&data_in_ping_dma_handles, &data_in_pong_dma_handles};
-    pi_cl_dma_cmd_t *data_out_dma_handles[2] = {&data_out_ping_dma_handles, &data_out_pong_dma_handles};
+    pi_cl_dma_cmd_t *data_in_dma_handles[2]  = {&data_in_ping_dma_handle, &data_in_pong_dma_handle};
+    pi_cl_dma_cmd_t *data_out_dma_handles[2] = {&data_out_ping_dma_handle, &data_out_pong_dma_handle};
 
     /* Initial Ping buffer setup*/
-    edge_buff_write_idx[0] = 0; //reset counter
-    for (int kk_idx = 0; kk_idx < LEN; kk_idx++){
-        if(L2_KK_buffer[kk_idx] == patch_kk){
-            /*this edge belongs to the patch being processed*/
-            if(edge_buff_write_idx[0] >= MAX_EDGE_PER_PATCH) {
-                printf("L1 egde buffer overflow!\n");
-                return;
-            }
-            collected_edge_buffer[0][edge_buff_write_idx[0]] = kk_idx;
-            edge_buff_write_idx[0] += 1;//increment the idx after an edge is written into the buffer
-        }
+    int num_patches     = L2_KK_buffer[0];
+    int num_dst_frames  = L2_KK_buffer[1];
+
+    if(num_dst_frames == 0){
+        /* no dst frame */
+        return;
     }
     
     /* issue the 2d data transfer in 1 shot */
-    if(edge_buff_write_idx[0] != 0){
-      pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[0*DIM], (uint32_t)L1_edge_in_buffer[0], //ext addr, loc addr, 
-                        edge_buff_write_idx[0] * (uint32_t)DIM * sizeof(float), // total size
-                        (uint32_t)DIM * sizeof(float) * PATCH_PER_FRAME,        // 2d stride
+    pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[0*DIM], (uint32_t)L1_edge_in_buffer[0], //ext addr, loc addr, 
+                        num_dst_frames * (uint32_t)DIM * sizeof(float),         // total size
+                        (uint32_t)DIM * sizeof(float) * MAX_PATCH_PER_FRAME,    // 2d stride
                         (uint32_t)DIM * sizeof(float),                          // length per section
                         PI_CL_DMA_DIR_EXT2LOC,  data_in_dma_handles[0]);
-    }
 
-    for (int patch_id = 0; patch_id < PATCH_PER_FRAME; patch_id++){
+    for (int patch_id = 0; patch_id < num_patches; patch_id++){
+
+#ifdef PERF_PROFILE
+        for (int i = 0; i < 8; i++){
+          CoreActiveCnt[i] = 0;
+        }
+        pi_perf_conf(1 << PI_PERF_CYCLES | 1 << PI_PERF_ACTIVE_CYCLES);
+        pi_perf_reset();
+        pi_perf_start();
+#endif
         int compute_bin = patch_id % 2; //0 for currently computing Ping, 1 for currently computing Pong 
         int data_bin    = (patch_id+1) % 2; //the buffer that is currently moving data
-        /* process edges from a patch*/
-        patch_kk = FRAME_ID * PATCH_PER_FRAME + patch_id;
-        edge_buff_write_idx[patch_id + 1] = 0; //reset the edge counter for next iteration
 
         /* collect edges from the current patch to the L1 buffer */
         /* set up data in transfer for the next iteration, except for the last iteration */
-        if(patch_id < PATCH_PER_FRAME - 1){
-          for (int kk_idx = 0; kk_idx < LEN; kk_idx++){
-            if(L2_KK_buffer[kk_idx] == patch_kk + 1){
-                /*this edge belongs to the patch being processed next iteration*/
-                if(edge_buff_write_idx[patch_id + 1] >= MAX_EDGE_PER_PATCH) {
-                    printf("L1 egde buffer overflow!\n");
-                    return;
-                }
-
-                collected_edge_buffer[data_bin][edge_buff_write_idx[patch_id + 1]] = kk_idx;
-                edge_buff_write_idx[patch_id + 1] += 1;//increment the idx after an edge is written into the buffer
-            }
-          }
-        }
-        
-        if(edge_buff_write_idx[patch_id + 1] != 0){
-          pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[(patch_id+1)*DIM], (uint32_t)L1_edge_in_buffer[data_bin], //ext addr, loc addr
-                        edge_buff_write_idx[patch_id + 1] * (uint32_t)DIM * sizeof(float),  // total size
-                        (uint32_t)DIM * sizeof(float) * PATCH_PER_FRAME,                    // 2d stride
-                        (uint32_t)DIM * sizeof(float),                                      // length per section
-                        PI_CL_DMA_DIR_EXT2LOC,  data_in_dma_handles[data_bin]);
-        }
-
-        /* no edge from the current patch */
-        if(edge_buff_write_idx[patch_id] == 0){
-           continue;
+        if(patch_id < num_patches - 1){
+            pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[(patch_id+1)*DIM], (uint32_t)L1_edge_in_buffer[data_bin], //ext addr, loc addr
+                          num_dst_frames * (uint32_t)DIM * sizeof(float),                     // total size
+                          (uint32_t)DIM * sizeof(float) * MAX_PATCH_PER_FRAME,                // 2d stride
+                          (uint32_t)DIM * sizeof(float),                                      // length per section
+                          PI_CL_DMA_DIR_EXT2LOC,  data_in_dma_handles[data_bin]);
         }
 
         /* wait for the input data dma finish before start compute */
@@ -294,13 +347,105 @@ void SoftMaxAgg_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2
           pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
         }
        
-
-
         KerColSoftMax_fp32_T softmax_arg;
         softmax_arg.In    = L1_edge_in_buffer[compute_bin];
         softmax_arg.Out   = L1_edge_out_buffer[compute_bin];
         softmax_arg.N     = DIM;
-        softmax_arg.Feat  = edge_buff_write_idx[patch_id];
+        softmax_arg.Feat  = num_dst_frames;
+
+        /* dispatch compute workload to the cluster */ 
+        pi_cl_team_fork(pi_cl_cluster_nb_cores(), function, (void *)&softmax_arg);
+
+        /* move the result back to L2 result buffer for the current iteration */
+        pi_cl_dma_cmd_2d((uint32_t)&L2_output_buffer[patch_id*DIM], (uint32_t)L1_edge_out_buffer[compute_bin], //ext addr, loc addr, 
+                      num_dst_frames * (uint32_t)DIM * sizeof(float),                 //total size
+                      (uint32_t)DIM * sizeof(float) * MAX_PATCH_PER_FRAME,            // 2d stride
+                      (uint32_t)DIM * sizeof(float),                                  // length per section
+                      PI_CL_DMA_DIR_LOC2EXT,  data_out_dma_handles[compute_bin]);
+#ifdef PERF_PROFILE
+        pi_perf_stop();
+        uint32_t cycles = pi_perf_read(PI_PERF_ACTIVE_CYCLES);
+        uint32_t tim_cycles = pi_perf_read(PI_PERF_CYCLES);
+        printf("Perf : %d cycles Timer : %d cycles, Feat:%d\n", cycles, tim_cycles, num_dst_frames);
+        for (int i = 0; i < 8; i++){
+          printf("Core: %d, active cycle:%d\n", i, CoreActiveCnt[i]);
+        }
+#endif
+        if(patch_id == num_patches-1){
+          /*wait for last DMA output*/
+          pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+        }
+
+
+    }
+
+}
+
+/* perfrom column softmax across L2_net buffer */
+void ColSoftMax_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_output_buffer, 
+                              float *L1_edge_in_ping_buffer, float *L1_edge_out_ping_buffer, 
+                              float *L1_edge_in_pong_buffer, float *L1_edge_out_pong_buffer) {
+
+    SoftMaxAgg_master_kernel( (float *)L2_net_buffer, (int *)L2_KK_buffer, (float *)L2_output_buffer, 
+                        (float *) L1_edge_in_ping_buffer, (float *) L1_edge_out_ping_buffer, 
+                        (float *) L1_edge_in_pong_buffer, (float *) L1_edge_out_ping_buffer, 
+                        KerColSoftMax_fp32);
+
+}
+
+/* perfrom column sum across L2_net buffer */
+void ColSum_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_output_buffer, 
+                              float *L1_edge_in_ping_buffer, float *L1_edge_out_ping_buffer, 
+                              float *L1_edge_in_pong_buffer, float *L1_edge_out_pong_buffer) {
+    SoftMaxAgg_master_kernel( (float *)L2_net_buffer, (int *)L2_KK_buffer, (float *)L2_output_buffer, 
+                        (float *) L1_edge_in_ping_buffer, (float *) L1_edge_out_ping_buffer, 
+                        (float *) L1_edge_in_pong_buffer, (float *) L1_edge_out_ping_buffer, 
+                        KerColSum_fp32);
+
+}
+
+/* add each edge in L2_agg buffer to a column of edges in L2_net, L1 inplace add */
+void ColScatter_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float* L2_agg_buffer, float *L2_output_buffer, 
+                              float *L1_edge_ping_buffer, float *L1_agg_ping_buffer,
+                              float *L1_edge_pong_buffer, float *L1_agg_pong_buffer) {
+    
+    pi_cl_dma_cmd_t data_in_ping_dma_handle; //maximum transfer MAX_EDGE_PER_PATCH edges
+    pi_cl_dma_cmd_t data_in_pong_dma_handle; 
+    pi_cl_dma_cmd_t agg_in_ping_dma_handle; 
+    pi_cl_dma_cmd_t agg_in_pong_dma_handle; 
+    pi_cl_dma_cmd_t data_out_ping_dma_handle; 
+    pi_cl_dma_cmd_t data_out_pong_dma_handle; 
+
+    /*Ping Pong array*/
+    float *L1_edge_buffer[2]      = {L1_edge_ping_buffer, L1_edge_pong_buffer};
+    float *L1_agg_in_buffer[2]    = {L1_agg_ping_buffer, L1_agg_pong_buffer};
+    pi_cl_dma_cmd_t *data_in_dma_handles[2]  = {&data_in_ping_dma_handle, &data_in_pong_dma_handle};
+    pi_cl_dma_cmd_t *agg_in_dma_handles[2]  = {&agg_in_ping_dma_handle, &agg_in_pong_dma_handle};
+    pi_cl_dma_cmd_t *data_out_dma_handles[2] = {&data_out_ping_dma_handle, &data_out_pong_dma_handle};
+
+    /* Initial Ping buffer setup*/
+    int num_patches     = L2_KK_buffer[0];
+    int num_dst_frames  = L2_KK_buffer[1];
+
+    if(num_dst_frames == 0){
+        /* no dst frame */
+        return;
+    }
+    
+    /* issue the 2d data transfer in 1 shot */
+    /* in net dma */
+    pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[0*DIM], (uint32_t)L1_edge_buffer[0], //ext addr, loc addr, 
+                        num_dst_frames * (uint32_t)DIM * sizeof(float),         // total size
+                        (uint32_t)DIM * sizeof(float) * MAX_PATCH_PER_FRAME,    // 2d stride
+                        (uint32_t)DIM * sizeof(float),                          // length per section
+                        PI_CL_DMA_DIR_EXT2LOC,  data_in_dma_handles[0]);
+    
+    /* in agg dma */
+    pi_cl_dma_cmd((uint32_t)&L2_agg_buffer[0*DIM], (uint32_t)L1_agg_in_buffer[0],
+                (uint32_t)DIM * sizeof(float), PI_CL_DMA_DIR_EXT2LOC, agg_in_dma_handles[0]);
+
+    for (int patch_id = 0; patch_id < num_patches; patch_id++){
+
 #ifdef PERF_PROFILE
         for (int i = 0; i < 8; i++){
           CoreActiveCnt[i] = 0;
@@ -309,24 +454,65 @@ void SoftMaxAgg_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2
         pi_perf_reset();
         pi_perf_start();
 #endif
+        int compute_bin = patch_id % 2; //0 for currently computing Ping, 1 for currently computing Pong 
+        int data_bin    = (patch_id+1) % 2; //the buffer that is currently moving data
+
+        /* collect edges from the current patch to the L1 buffer */
+        /* set up data in transfer for the next iteration, except for the last iteration */
+        if(patch_id < num_patches - 1){
+            /* in net dma */
+            pi_cl_dma_cmd_2d((uint32_t)&L2_net_buffer[(patch_id+1)*DIM], (uint32_t)L1_edge_buffer[data_bin], //ext addr, loc addr
+                          num_dst_frames * (uint32_t)DIM * sizeof(float),                     // total size
+                          (uint32_t)DIM * sizeof(float) * MAX_PATCH_PER_FRAME,                // 2d stride
+                          (uint32_t)DIM * sizeof(float),                                      // length per section
+                          PI_CL_DMA_DIR_EXT2LOC,  data_in_dma_handles[data_bin]);
+
+            /* in agg dma */
+            pi_cl_dma_cmd((uint32_t)&L2_agg_buffer[(patch_id+1)*DIM], (uint32_t)L1_agg_in_buffer[data_bin],
+                          (uint32_t)DIM * sizeof(float), PI_CL_DMA_DIR_EXT2LOC, agg_in_dma_handles[data_bin]);
+        }
+
+        /* wait for the input data dma finish before start compute */
+        pi_cl_dma_cmd_wait(data_in_dma_handles[compute_bin]);
+        pi_cl_dma_cmd_wait(agg_in_dma_handles[compute_bin]);
+
+        /* wait for the output data dma two iterations before to finis */
+        if(patch_id >= 2){
+          /*only need to start checking previous output dma transfer starting 3rd iteration*/
+          pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+        }
+       
+        KerColScatter_fp32_T scatter_arg;
+        scatter_arg.In      = L1_edge_buffer[compute_bin];
+        scatter_arg.In_agg  = L1_agg_in_buffer[compute_bin];
+        scatter_arg.N       = DIM;
+        scatter_arg.Feat    = num_dst_frames;
+
         /* dispatch compute workload to the cluster */ 
-        pi_cl_team_fork(pi_cl_cluster_nb_cores(), KerColSoftMax_fp32, (void *)&softmax_arg);
-        
+        pi_cl_team_fork(pi_cl_cluster_nb_cores(), KerCatter_fp32, (void *)&scatter_arg);
+
+        /* move the result back to L2 result buffer for the current iteration */
+        pi_cl_dma_cmd_2d((uint32_t)&L2_output_buffer[patch_id*DIM], (uint32_t)L1_edge_buffer[compute_bin], //ext addr, loc addr, 
+                      num_dst_frames * (uint32_t)DIM * sizeof(float),                 //total size
+                      (uint32_t)DIM * sizeof(float) * MAX_PATCH_PER_FRAME,            // 2d stride
+                      (uint32_t)DIM * sizeof(float),                                  // length per section
+                      PI_CL_DMA_DIR_LOC2EXT,  data_out_dma_handles[compute_bin]);
 #ifdef PERF_PROFILE
         pi_perf_stop();
         uint32_t cycles = pi_perf_read(PI_PERF_ACTIVE_CYCLES);
         uint32_t tim_cycles = pi_perf_read(PI_PERF_CYCLES);
-        printf("Perf : %d cycles Timer : %d cycles, Feat:%d\n", cycles, tim_cycles, edge_buff_write_idx);
+        printf("Perf : %d cycles Timer : %d cycles, Feat:%d\n", cycles, tim_cycles, num_dst_frames);
         for (int i = 0; i < 8; i++){
           printf("Core: %d, active cycle:%d\n", i, CoreActiveCnt[i]);
         }
 #endif
-        /* move the result back to L2 result buffer for the current iteration */
-        pi_cl_dma_cmd_2d((uint32_t)&L2_output_buffer[patch_id*DIM], (uint32_t)L1_edge_out_buffer[compute_bin], //ext addr, loc addr, 
-                      edge_buff_write_idx[patch_id] * (uint32_t)DIM * sizeof(float),  //total size
-                      (uint32_t)DIM * sizeof(float) * PATCH_PER_FRAME,                // 2d stride
-                      (uint32_t)DIM * sizeof(float),                                  // length per section
-                      PI_CL_DMA_DIR_LOC2EXT,  data_out_dma_handles[compute_bin]);
+        if(patch_id == num_patches-1){
+          /*wait for last DMA output*/
+          pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+        }
+
+
     }
+
 
 }

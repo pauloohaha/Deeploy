@@ -5,9 +5,9 @@
 from typing import Dict, List, Tuple
 
 from Deeploy.DeeployTypes import NetworkContext, NodeTemplate, OperatorRepresentation, VariableBuffer
+from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_EDGE_PER_PATCH, DIM
 
-
-class CustomSoftmaxAgg(NodeTemplate):
+class CustomnColSum(NodeTemplate):
     def alignToContext(self, ctxt: NetworkContext,
                       operatorRepresentation: OperatorRepresentation) -> Tuple[NetworkContext, Dict, List[str]]:
       
@@ -24,6 +24,11 @@ class CustomSoftmaxAgg(NodeTemplate):
       in_net_Buffer = ctxt.lookup(operatorRepresentation['data_in_net'])
       in_kk_Buffer  = ctxt.lookup(operatorRepresentation['data_in_kk'])
       out_net_Buffer = ctxt.lookup(operatorRepresentation['data_out'])
+
+      #expect the input and output buffers in L2
+      in_net_Buffer._targetmemorylevel['CustomnColSum'] = 'L2'
+      in_kk_Buffer._targetmemorylevel['CustomnColSum'] = 'L2'
+      out_net_Buffer._targetmemorylevel['CustomnColSum'] = 'L2'
       out_net_Buffer._alias = in_net_Buffer.name
 
       return ctxt, operatorRepresentation, []
@@ -32,25 +37,19 @@ class CustomSoftmaxAgg(NodeTemplate):
     def hoistTransientBuffers(self, ctxt: NetworkContext,
                               operatorRepresentation: OperatorRepresentation) -> Tuple[NetworkContext, Dict, List[str]]:
       
-      MAX_EDGE_PER_PATCH = 5
-      DIM = 384
+
 
       L1_edge_in_ping_buffer_name         = operatorRepresentation['nodeName'] + "_L1_edge_in_ping_buffer"
       L1_edge_in_pong_buffer_name         = operatorRepresentation['nodeName'] + "_L1_edge_in_pong_buffer"
       L1_edge_out_ping_buffer_name        = operatorRepresentation['nodeName'] + "_L1_edge_out_ping_buffer"
       L1_edge_out_pong_buffer_name        = operatorRepresentation['nodeName'] + "_L1_edge_out_pong_buffer"
-      L1_collected_edge_ping_buffer_name  = operatorRepresentation['nodeName'] + "_L1_collected_edge_ping_buffer"
-      L1_collected_edge_pong_buffer_name  = operatorRepresentation['nodeName'] + "_L1_collected_edge_pong_buffer"
 
       L1_edge_buffer_dim = MAX_EDGE_PER_PATCH * DIM * 4 #float32
-      L1_collected_edge_buffer_size = MAX_EDGE_PER_PATCH * 4 #int32
 
       ctxt.hoistTransientBuffer(L1_edge_in_ping_buffer_name, L1_edge_buffer_dim)
       ctxt.hoistTransientBuffer(L1_edge_out_ping_buffer_name, L1_edge_buffer_dim)
       ctxt.hoistTransientBuffer(L1_edge_in_pong_buffer_name, L1_edge_buffer_dim)
       ctxt.hoistTransientBuffer(L1_edge_out_pong_buffer_name, L1_edge_buffer_dim)
-      ctxt.hoistTransientBuffer(L1_collected_edge_ping_buffer_name, L1_collected_edge_buffer_size)
-      ctxt.hoistTransientBuffer(L1_collected_edge_pong_buffer_name, L1_collected_edge_buffer_size)
       
       ctxt.lookup(L1_edge_in_ping_buffer_name)._type.referencedType = ctxt.lookup(
             operatorRepresentation['data_in_net'])._type.referencedType
@@ -60,36 +59,32 @@ class CustomSoftmaxAgg(NodeTemplate):
             operatorRepresentation['data_out'])._type.referencedType
       ctxt.lookup(L1_edge_out_pong_buffer_name)._type.referencedType = ctxt.lookup(
             operatorRepresentation['data_out'])._type.referencedType
-      ctxt.lookup(L1_collected_edge_ping_buffer_name)._type.referencedType = ctxt.lookup(
-            operatorRepresentation['data_in_kk'])._type.referencedType
-      ctxt.lookup(L1_collected_edge_pong_buffer_name)._type.referencedType = ctxt.lookup(
-            operatorRepresentation['data_in_kk'])._type.referencedType
+      
+      ctxt.lookup(L1_edge_in_ping_buffer_name)._targetmemorylevel['CustomnColSum'] = "L1"
+      ctxt.lookup(L1_edge_in_pong_buffer_name)._targetmemorylevel['CustomnColSum'] = "L1"
+      ctxt.lookup(L1_edge_out_ping_buffer_name)._targetmemorylevel['CustomnColSum'] = "L1"
+      ctxt.lookup(L1_edge_out_pong_buffer_name)._targetmemorylevel['CustomnColSum'] = "L1"
       
       operatorRepresentation['edge_buff_l1_ping_in']    = L1_edge_in_ping_buffer_name
       operatorRepresentation['edge_buff_l1_ping_out']   = L1_edge_out_ping_buffer_name
       operatorRepresentation['edge_buff_l1_pong_in']    = L1_edge_in_pong_buffer_name
       operatorRepresentation['edge_buff_l1_pong_out']   = L1_edge_out_pong_buffer_name
-      operatorRepresentation['collected_edge_id_ping']  = L1_collected_edge_ping_buffer_name
-      operatorRepresentation['collected_edge_id_pong']  = L1_collected_edge_pong_buffer_name
 
       return ctxt, operatorRepresentation, [L1_edge_in_ping_buffer_name, L1_edge_out_ping_buffer_name, 
-                                            L1_edge_in_pong_buffer_name, L1_edge_out_pong_buffer_name, 
-                                            L1_collected_edge_ping_buffer_name, L1_collected_edge_pong_buffer_name]
+                                            L1_edge_in_pong_buffer_name, L1_edge_out_pong_buffer_name]
 
 
-referenceTemplate = CustomSoftmaxAgg("""
-// Customized SoftMax agg for DPVO (Name: ${nodeName}, Op: ${nodeOp})
+referenceTemplate = CustomnColSum("""
+// Customized columnwise sum for DPVO (Name: ${nodeName}, Op: ${nodeOp})
 
-                                     
-SoftMaxAgg_master_kernel( (float *)${data_in_net}, \
+printf("start col sum kernel\\n");                            
+ColSum_master_kernel( (float *)${data_in_net}, \
                           (int   *)${data_in_kk}, \
                           (float *)${data_out}, \
                           (float *)${edge_buff_l1_ping_in}, \
                           (float *)${edge_buff_l1_ping_out}, \
                           (float *)${edge_buff_l1_pong_in}, \
-                          (float *)${edge_buff_l1_pong_out}, \
-                          (int   *)${collected_edge_id_ping}, \
-                          (int   *)${collected_edge_id_pong});
+                          (float *)${edge_buff_l1_pong_out});
 
     
                               

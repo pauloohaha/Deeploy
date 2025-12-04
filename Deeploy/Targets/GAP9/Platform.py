@@ -33,8 +33,8 @@ from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser,
 
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Templates import AllocateTemplate, FreeTemplate
-from Deeploy.Targets.GAP9.Layers import CustomSoftmaxAgg
-from Deeploy.Targets.GAP9.Parsers import CustomSoftmaxAggParser
+from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter
+from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser
 
 from Deeploy.Targets.GAP9.Tiler import (
     GAP9AddTilingReadyBindings,
@@ -68,7 +68,10 @@ from Deeploy.Targets.GAP9.Tiler import (
     GAP9SoftmaxTilingReadyBindings,
     GAP9TransposeTilingReadyBindings,
     GAP9UniformRQSTilingReadyBindings,
-    CustomSoftmaxAggTilingReadyBindings
+    CustomColSoftmaxTilingReadyBindings,
+    CustomColScatterTilingReadyBindings,
+    CustomColSumTilingReadyBindings,
+    CustomElementMulTilingReadyBindings
 )
 
 # Create GAP9-specific NodeMappers
@@ -120,7 +123,10 @@ GAP9_SGDMapper = NodeMapper(SGDParser(), GAP9SGDTilingReadyBindings)
 GAP9_QuantMapper = NodeMapper(QuantParser(), BasicQuantBindings)
 GAP9_DequantMapper = NodeMapper(DequantParser(), BasicDequantBindings)
 GAP9_GEMMDequantMapper = NodeMapper(PULPGEMMParser(), BasicGEMMBindings)
-CustomSoftmaxAggMapper = NodeMapper(CustomSoftmaxAggParser(), CustomSoftmaxAggTilingReadyBindings)
+CustomColSoftmaxMapper = NodeMapper(CustomColSoftmaxParser(), CustomColSoftmaxTilingReadyBindings)
+CustomColScatterMapper = NodeMapper(CustomColScatterParser(), CustomColScatterTilingReadyBindings)
+CustomColSumMapper = NodeMapper(CustomColSumParser(), CustomColSumTilingReadyBindings)
+CustomElementMulMapper = NodeMapper(MulParser(),  CustomElementMulTilingReadyBindings)
 
 # GAP9-specific mapping using ClDma
 GAP9Mapping = {
@@ -162,7 +168,10 @@ GAP9Mapping = {
     'SoftmaxCrossEntropyLoss': SoftmaxCrossEntropyLossLayer([GAP9_SoftmaxCrossEntropyLossMapper]),
     'SoftmaxCrossEntropyLossGrad': SoftmaxCrossEntropyLossGradLayer([GAP9_SoftmaxCrossEntropyLossGradMapper]),
     'SGD': SGDLayer([GAP9_SGDMapper]),
-    "CustomSoftmaxAgg": CustomSoftmaxAgg([CustomSoftmaxAggMapper])
+    'CustomColSoftmax': CustomColSoftmax([CustomColSoftmaxMapper]),
+    'CustomColSum': CustomColSum([CustomColSumMapper]),
+    'CustomColScatter': CustomColScatter([CustomColScatterMapper]),
+    'CustomElementMul': MulLayer([CustomElementMulMapper]),
 }
 
 
@@ -262,9 +271,8 @@ class GAP9Platform(DeploymentPlatform):
         super().__init__(engines, variableBuffer, constantBuffer, structBuffer, transientBuffer)
 
 
+untiledOps = ["add"]
 class MemoryGAP9Platform(MemoryPlatform):
-
-    untiledOps = ["add"]
 
     def __init__(self,
                  memoryHierarchy: MemoryHierarchy,
@@ -278,14 +286,14 @@ class MemoryGAP9Platform(MemoryPlatform):
                          structBuffer, transientBuffer)
 
     def getTargetMemoryLevel(self, node: gs.Node, tensorName: str, ctxt: NetworkContext) -> str:
-        if node.op in self.untiledOps:
+        if node.op in untiledOps:
             return ctxt.lookup(tensorName)._memoryLevel
         return super().getTargetMemoryLevel(node, tensorName, ctxt)
 
 
 class MemoryGAP9PlatformWrapper(MemoryPlatformWrapper):
 
-    untiledOps = ["add"]
+
 
     def __init__(self, platform: GAP9Platform, memoryHierarchy: MemoryHierarchy, defaultTargetMemoryLevel: MemoryLevel):
         assert isinstance(platform, GAP9Platform), \
@@ -293,6 +301,8 @@ class MemoryGAP9PlatformWrapper(MemoryPlatformWrapper):
         super().__init__(platform, memoryHierarchy, defaultTargetMemoryLevel)
 
     def getTargetMemoryLevel(self, node: gs.Node, tensorName: str, ctxt: NetworkContext) -> str:
-        if node.op in self.untiledOps:
+        if node.op in untiledOps:
             return ctxt.lookup(tensorName)._memoryLevel
+        elif node.op in ctxt.lookup(tensorName)._targetmemorylevel:
+            return ctxt.lookup(tensorName)._targetmemorylevel[node.op]
         return super().getTargetMemoryLevel(node, tensorName, ctxt)

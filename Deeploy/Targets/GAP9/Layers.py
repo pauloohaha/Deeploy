@@ -8,7 +8,18 @@ from Deeploy.DeeployTypes import NodeMapper, Shape, ONNXLayer
 
 
     
-class CustomSoftmaxAgg(ONNXLayer):
+class CustomColSoftmax(ONNXLayer):
+
+    def __init__(self, maps: List[NodeMapper]):
+        super().__init__(maps)
+
+
+class CustomColSum(ONNXLayer):
+
+    def __init__(self, maps: List[NodeMapper]):
+        super().__init__(maps)
+
+class CustomColScatter(ONNXLayer):
 
     def __init__(self, maps: List[NodeMapper]):
         super().__init__(maps)

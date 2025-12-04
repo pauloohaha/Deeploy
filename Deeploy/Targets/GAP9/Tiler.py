@@ -54,7 +54,10 @@ from Deeploy.Targets.GAP9.Bindings import (
     GAP9SoftmaxGradBindings,
     GAP9TransposeBindings,
     GAP9UniformRQSBindings,
-    CustomSoftmaxAggBindings,
+    CustomColSoftmaxBindings,
+    CustomColSumBindings,
+    CustomColScatterBindings,
+    CustomElementMulBindings,
     GAP9FloatDWConv2DBindings
 )
 from Deeploy.Targets.PULPOpen.TileConstraints.ConvTileConstraint import Conv2DTileConstraint, RQConv2DTileConstraint
@@ -72,7 +75,9 @@ from Deeploy.Targets.PULPOpen.TileConstraints.SoftmaxCrossEntropyTileConstraint 
     SoftmaxCrossEntropyGradTileConstraint, SoftmaxCrossEntropyTileConstraint
 from Deeploy.TilingExtension.TilerExtension import TilingReadyNodeBindings
 
-from Deeploy.Targets.GAP9.TileConstraints.CustomSoftMaxAggConstraint import CustomSoftmaxAggTileConstraint
+from Deeploy.Targets.GAP9.TileConstraints.CustomColSoftmaxConstraint import CustomColSoftmaxTileConstraint
+from Deeploy.Targets.GAP9.TileConstraints.CustomColScatterConstraint import CustomColScatterTileConstraint
+from Deeploy.Targets.GAP9.TileConstraints.CustomColSumConstraint import CustomColSumTileConstraint
 
 # GAP9-specific tiling ready bindings using ClDma
 GAP9RQSConv2DTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9RQSConv2DBindings,
@@ -174,5 +179,14 @@ GAP9SGDTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9SGDBindi
                                                      tileConstraint = SGDTileConstraint())
 
 
-CustomSoftmaxAggTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomSoftmaxAggBindings,
-                                                     tileConstraint = CustomSoftmaxAggTileConstraint())
+CustomColSoftmaxTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomColSoftmaxBindings,
+                                                     tileConstraint = CustomColSoftmaxTileConstraint())
+
+CustomColSumTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomColSumBindings,
+                                                     tileConstraint = CustomColSumTileConstraint())
+
+CustomColScatterTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomColScatterBindings,
+                                                     tileConstraint = CustomColScatterTileConstraint())
+
+CustomElementMulTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomElementMulBindings,
+                                                     tileConstraint = MulTileConstraint())

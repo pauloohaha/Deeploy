@@ -14,7 +14,6 @@ uint32_t ${nodeName}_start = MIN(${nodeName}_chunk * ${nodeName}_core_id, (uint3
 uint32_t ${nodeName}_end = MIN(${nodeName}_start + ${nodeName}_chunk, (uint32_t) ${size});
 
 if (${nodeName}_start < ${nodeName}_end) {
-    float32_t ${nodeName}_scalar = ${B}[0];
     uint32_t ${nodeName}_unroll_end = ${nodeName}_start + ((${nodeName}_end - ${nodeName}_start) / 6) * 6;
     for (uint32_t i = ${nodeName}_start; i < ${nodeName}_unroll_end; i += 6) {
         ${C}[i + 0] = ${A}[i + 0] * ${B}[i + 0];

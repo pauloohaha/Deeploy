@@ -89,11 +89,12 @@ class AnnotateTransientBuffersToL1CodeTransform(CodeTransformationPass):
             raise("L1 arena not found")
 
         arena = ctxt.lookup(self.arenaName)
+        currentOffset = 0 #reset arena offset for each time of transform
 
         # Iterate through all buffers in both local and global contexts
         for _buffer in {**ctxt.localObjects, **ctxt.globalObjects}.values():
             # Check if it's a transient buffer
-            if isinstance(_buffer, TransientBuffer):
+            if isinstance(_buffer, TransientBuffer) and _buffer._users[0] == name:#only transform for trasient buffer in current layer
                 # Only annotate if:
                 # 1. Buffer doesn't have _memoryLevel yet, OR
                 # 2. overrideExisting is True
@@ -107,11 +108,11 @@ class AnnotateTransientBuffersToL1CodeTransform(CodeTransformationPass):
                     _buffer.initTemplate = NodeTemplate("")  # Disable init template
                     _buffer.allocTemplate = NodeTemplate(
                         "${type.typeName} ${name} = (${type.typeName}) " +
-                        f"((char*){str(arena._instance)} + {self.currentOffset});")
+                        f"((char*){str(arena._instance)} + {currentOffset});")
                     _buffer.deallocTemplate = NodeTemplate("")
 
                     # Update offset for next buffer
-                    self.currentOffset += bufferSize
-
+                    currentOffset += bufferSize
+            
 
         return ctxt, executionBlock

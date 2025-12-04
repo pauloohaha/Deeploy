@@ -124,9 +124,10 @@ void cl_ram_write(void *dest, void *src, const size_t size) {
 }
 
 size_t load_file_to_ram(const void *dest, const char *filename) {
+  printf("Loading file %s! \n", filename);
   pi_fs_file_t *fd = pi_fs_open(&fs, filename, 0);
   if (fd == NULL) {
-    printf("ERROR: Cannot open file %s! Exiting...", filename);
+    printf("ERROR: Cannot open file %s! Exiting...\n", filename);
     pmsis_exit(-4);
   }
 
@@ -153,7 +154,7 @@ size_t load_file_to_ram(const void *dest, const char *filename) {
 size_t load_file_to_local(const void *dest, const char *filename) {
   pi_fs_file_t *fd = pi_fs_open(&fs, filename, 0);
   if (fd == NULL) {
-    printf("ERROR: Cannot open file %s! Exiting...", filename);
+    printf("ERROR: Cannot open file %s! Exiting...\n", filename);
     pmsis_exit(-4);
   }
 
