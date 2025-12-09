@@ -58,7 +58,8 @@ from Deeploy.Targets.GAP9.Bindings import (
     CustomColSumBindings,
     CustomColScatterBindings,
     CustomElementMulBindings,
-    GAP9FloatDWConv2DBindings
+    GAP9FloatDWConv2DBindings,
+    FloatSigmoidBindings
 )
 from Deeploy.Targets.PULPOpen.TileConstraints.ConvTileConstraint import Conv2DTileConstraint, RQConv2DTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.DWConvTileConstraint import DWConv2DTileConstraint, \
@@ -190,3 +191,6 @@ CustomColScatterTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = Cus
 
 CustomElementMulTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomElementMulBindings,
                                                      tileConstraint = MulTileConstraint())
+
+FloatSigmoidTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = FloatSigmoidBindings,
+                                                      tileConstraint = UnaryTileConstraint())

@@ -4,6 +4,7 @@
 
 file(GLOB_RECURSE SOURCES
   "src/**"
+  "$ENV{GAP_SDK_HOME}/tools/autotiler_v3/CNN_Libraries_fp32/CNN_Bias_Linear_Activation_fp32.c"
 )
 
 # RW: Include PULPOpen sources but exclude dory_mem related files

@@ -139,8 +139,8 @@ void KerColSoftMax8Bits_SQ8 (KerColSoftMax_SQ8_T *Arg)
 }
 
 #define FRAME_ID  0
-#define MAX_PATCH_PER_FRAME  4
-#define MAX_EDGE_PER_PATCH  5
+#define MAX_PATCH_PER_FRAME  5
+#define MAX_EDGE_PER_PATCH  4
 #define DIM   ( 384 )
 #define LEN   ( 100 )
 
@@ -506,10 +506,10 @@ void ColScatter_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float* L2
           printf("Core: %d, active cycle:%d\n", i, CoreActiveCnt[i]);
         }
 #endif
-        if(patch_id == num_patches-1){
-          /*wait for last DMA output*/
-          pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
-        }
+
+        /*wait for every DMA output as input buffer is reused */
+        pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+
 
 
     }

@@ -33,8 +33,8 @@ from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser,
 
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Templates import AllocateTemplate, FreeTemplate
-from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter
-from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser
+from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid
+from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, FloatSigmoidParser
 
 from Deeploy.Targets.GAP9.Tiler import (
     GAP9AddTilingReadyBindings,
@@ -71,7 +71,8 @@ from Deeploy.Targets.GAP9.Tiler import (
     CustomColSoftmaxTilingReadyBindings,
     CustomColScatterTilingReadyBindings,
     CustomColSumTilingReadyBindings,
-    CustomElementMulTilingReadyBindings
+    CustomElementMulTilingReadyBindings,
+    FloatSigmoidTilingReadyBindings
 )
 
 # Create GAP9-specific NodeMappers
@@ -127,6 +128,7 @@ CustomColSoftmaxMapper = NodeMapper(CustomColSoftmaxParser(), CustomColSoftmaxTi
 CustomColScatterMapper = NodeMapper(CustomColScatterParser(), CustomColScatterTilingReadyBindings)
 CustomColSumMapper = NodeMapper(CustomColSumParser(), CustomColSumTilingReadyBindings)
 CustomElementMulMapper = NodeMapper(MulParser(),  CustomElementMulTilingReadyBindings)
+FloatSigmoidMapper = NodeMapper(FloatSigmoidParser(), FloatSigmoidTilingReadyBindings)
 
 # GAP9-specific mapping using ClDma
 GAP9Mapping = {
@@ -172,6 +174,7 @@ GAP9Mapping = {
     'CustomColSum': CustomColSum([CustomColSumMapper]),
     'CustomColScatter': CustomColScatter([CustomColScatterMapper]),
     'CustomElementMul': MulLayer([CustomElementMulMapper]),
+    'Sigmoid': Sigmoid([FloatSigmoidMapper]),
 }
 
 
@@ -249,7 +252,8 @@ _includeList = [
     "pmsis.h",
     "DeeployGAP9Math.h",
     "pulp_nn_kernels.h",
-    "DeeployMchan.h"  
+    "DeeployMchan.h",
+    "CNN_BasicKernels_fp32.h"
 ]
 
 

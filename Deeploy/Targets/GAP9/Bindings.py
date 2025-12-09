@@ -28,7 +28,7 @@ from Deeploy.Targets.PULPOpen.CodeTransformationPasses.PULPProfileUntiled import
 from Deeploy.Targets.PULPOpen.Bindings import TilingCallClosure, ForkClosure, \
     MemoryAwareFunctionCallClosure, L3MemoryAwareFunctionCallClosure, MemoryAwareForkTransformer, ForkTransformer
 from Deeploy.Targets.PULPOpen.DataTypes import PULPDMAFuture
-from Deeploy.Targets.GAP9.Templates import CustomColSoftmax, CustomColSum, CustomColScatter, CustomElementMul
+from Deeploy.Targets.GAP9.Templates import CustomColSoftmax, CustomColSum, CustomColScatter, CustomElementMul, FloatSigmoid
 from Deeploy.Targets.GAP9.DMA.MchanDma import GAP9MchanDma
 from Deeploy.Targets.GAP9.DMA.L3Dma import gap9L3DmaHack
 
@@ -439,3 +439,6 @@ CustomElementMulBindings =  [
     NodeBinding(MulChecker([PointerClass(float32_t), PointerClass(float32_t)], [PointerClass(float32_t)]),
                 CustomElementMul.referenceTemplate, GAP9Transformer)
 ]
+
+FloatSigmoidBindings = [NodeBinding(ReluChecker([PointerClass(float32_t)], [PointerClass(float32_t)]),
+                              FloatSigmoid.referenceTemplate, GAP9Transformer)]
