@@ -113,7 +113,9 @@ class CustomColScatterTileConstraint(TileConstraint):
         outputLoadSchedule = []
 
         for cube in outputCubes:
-            inputLoadSchedule.append({"data_in_net": cube, "data_in_kk": HyperRectangle(tuple([0]), tuple([2])), "data_in_agg": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_PATCH_PER_FRAME, DIM]))})
+            inputLoadSchedule.append({"data_in_net": cube, 
+                                      "data_in_kk": HyperRectangle(tuple([0]), tuple([2])), 
+                                      "data_in_agg": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_PATCH_PER_FRAME, DIM]))})
 
         for out in outputCubes:
             outputLoadSchedule.append({"data_out": out})

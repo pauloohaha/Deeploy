@@ -99,7 +99,8 @@ class CustomColSumTileConstraint(TileConstraint):
         outputLoadSchedule = []
 
         for cube in outputCubes:
-            inputLoadSchedule.append({"data_in_net": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_TOTAL_EDGE, DIM])), "data_in_kk": HyperRectangle(tuple([0]), tuple([2]))})
+            inputLoadSchedule.append({"data_in_net": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_TOTAL_EDGE, DIM])), 
+                                      "data_in_kk": HyperRectangle(tuple([0]), tuple([2]))})
 
         for out in outputCubes:
             outputLoadSchedule.append({"data_out": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_PATCH_PER_FRAME, DIM]))})
