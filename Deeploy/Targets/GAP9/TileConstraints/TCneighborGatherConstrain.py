@@ -16,7 +16,7 @@ from Deeploy.TilingExtension.TilerModel import TilerModel
 from Deeploy.TilingExtension.TilingCodegen import AbsoluteHyperRectangle, TilingSchedule, VariableReplacementScheme, HyperRectangle
 
 
-class CustomColSoftmaxTileConstraint(TileConstraint):
+class TCneighborGatherConstrain(TileConstraint):
 
     @staticmethod
     def addGeometricalConstraint(tilerModel: TilerModel, parseDict: Dict, ctxt: NetworkContext) -> TilerModel:

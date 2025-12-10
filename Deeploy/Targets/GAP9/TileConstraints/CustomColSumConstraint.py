@@ -60,6 +60,11 @@ class CustomColSumTileConstraint(TileConstraint):
         # don't tile kk
         tilerModel.addConstraint(kkDim0FullSize == kkDim0Var)
 
+        # don't tile edge dir
+        netDim1FullSize = inputNetBuffer.shape[1]
+        netDim1Var = tilerModel.getTensorDimVar(tensorName=inputNetBufferName, dimIdx=1)
+        tilerModel.addConstraint(netDim1FullSize == netDim1Var)
+
         return tilerModel
 
     # @staticmethod

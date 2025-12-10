@@ -33,8 +33,9 @@ from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser,
 
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Templates import AllocateTemplate, FreeTemplate
-from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid
-from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, FloatSigmoidParser
+from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather
+from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, FloatSigmoidParser, \
+    TCneighborGatherParser
 
 from Deeploy.Targets.GAP9.Tiler import (
     GAP9AddTilingReadyBindings,
@@ -72,7 +73,8 @@ from Deeploy.Targets.GAP9.Tiler import (
     CustomColScatterTilingReadyBindings,
     CustomColSumTilingReadyBindings,
     CustomElementMulTilingReadyBindings,
-    FloatSigmoidTilingReadyBindings
+    FloatSigmoidTilingReadyBindings,
+    TCneighborGatherTilingReadyBindings
 )
 
 # Create GAP9-specific NodeMappers
@@ -129,6 +131,7 @@ CustomColScatterMapper = NodeMapper(CustomColScatterParser(), CustomColScatterTi
 CustomColSumMapper = NodeMapper(CustomColSumParser(), CustomColSumTilingReadyBindings)
 CustomElementMulMapper = NodeMapper(MulParser(),  CustomElementMulTilingReadyBindings)
 FloatSigmoidMapper = NodeMapper(FloatSigmoidParser(), FloatSigmoidTilingReadyBindings)
+TCneighborGatherMapper = NodeMapper(TCneighborGatherParser(), TCneighborGatherTilingReadyBindings)
 
 # GAP9-specific mapping using ClDma
 GAP9Mapping = {
@@ -175,6 +178,7 @@ GAP9Mapping = {
     'CustomColScatter': CustomColScatter([CustomColScatterMapper]),
     'CustomElementMul': MulLayer([CustomElementMulMapper]),
     'Sigmoid': Sigmoid([FloatSigmoidMapper]),
+    'TCneighborGather': TCneighborGather([TCneighborGatherMapper])
 }
 
 
@@ -253,7 +257,8 @@ _includeList = [
     "DeeployGAP9Math.h",
     "pulp_nn_kernels.h",
     "DeeployMchan.h",
-    "CNN_BasicKernels_fp32.h"
+    "CNN_BasicKernels_fp32.h",
+    "tc_layout_neighbor.h"
 ]
 
 
