@@ -15,7 +15,7 @@ class CustomColSoftmaxParser(NodeParser):
         super().__init__()
 
     def parseNode(self, node: gs.Node) -> (bool):
-        pass
+        self.operatorRepresentation['dir'] = node.attrs['dir']
         return True
 
     def parseNodeCtxt(self,
@@ -37,7 +37,7 @@ class CustomColSumParser(NodeParser):
         super().__init__()
 
     def parseNode(self, node: gs.Node) -> (bool):
-        pass
+        self.operatorRepresentation['dir'] = node.attrs['dir']
         return True
 
     def parseNodeCtxt(self,
@@ -60,7 +60,7 @@ class CustomColScatterParser(NodeParser):
         super().__init__()
 
     def parseNode(self, node: gs.Node) -> (bool):
-        pass
+        self.operatorRepresentation['dir'] = node.attrs['dir']
         return True
 
     def parseNodeCtxt(self,

@@ -5,7 +5,7 @@
 from typing import Dict, List, Tuple
 
 from Deeploy.DeeployTypes import NetworkContext, NodeTemplate, OperatorRepresentation, VariableBuffer
-from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_EDGE_PER_PATCH, DIM
+from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_PATCH_PER_FRAME, MAX_EDGE_PER_PATCH, DIM
 
 class CustomColSoftmax(NodeTemplate):
     def alignToContext(self, ctxt: NetworkContext,
@@ -43,7 +43,12 @@ class CustomColSoftmax(NodeTemplate):
       L1_edge_out_ping_buffer_name        = operatorRepresentation['nodeName'] + "_L1_edge_out_ping_buffer"
       L1_edge_out_pong_buffer_name        = operatorRepresentation['nodeName'] + "_L1_edge_out_pong_buffer"
 
-      L1_edge_buffer_dim = MAX_EDGE_PER_PATCH * DIM * 4 #float32
+      if operatorRepresentation['dir'] == 0:
+          # patch aggregation, process MAX_EDGE_PER_PATCH from one patch each time
+          L1_edge_buffer_dim = MAX_EDGE_PER_PATCH * DIM * 4 #float32
+      else:
+          # frame aggregation, process MAX_PATCH_PER_FRAME from one frame each time
+          L1_edge_buffer_dim = MAX_PATCH_PER_FRAME * DIM * 4 #float32
 
       ctxt.hoistTransientBuffer(L1_edge_in_ping_buffer_name, L1_edge_buffer_dim)
       ctxt.hoistTransientBuffer(L1_edge_out_ping_buffer_name, L1_edge_buffer_dim)
@@ -83,6 +88,7 @@ ColSoftMax_master_kernel( (float *)${data_in_net}, \
                           (float *)${edge_buff_l1_ping_in}, \
                           (float *)${edge_buff_l1_ping_out}, \
                           (float *)${edge_buff_l1_pong_in}, \
-                          (float *)${edge_buff_l1_pong_out});
+                          (float *)${edge_buff_l1_pong_out}, \
+                          (int    )${dir});
                               
 """)
