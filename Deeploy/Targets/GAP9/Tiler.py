@@ -60,7 +60,8 @@ from Deeploy.Targets.GAP9.Bindings import (
     CustomElementMulBindings,
     GAP9FloatDWConv2DBindings,
     FloatSigmoidBindings,
-    TCneighborGatherBindings
+    TCneighborGatherBindings,
+    Instancenorm2dBindings
 )
 from Deeploy.Targets.PULPOpen.TileConstraints.ConvTileConstraint import Conv2DTileConstraint, RQConv2DTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.DWConvTileConstraint import DWConv2DTileConstraint, \
@@ -81,6 +82,7 @@ from Deeploy.Targets.GAP9.TileConstraints.CustomColSoftmaxConstraint import Cust
 from Deeploy.Targets.GAP9.TileConstraints.CustomColScatterConstraint import CustomColScatterTileConstraint
 from Deeploy.Targets.GAP9.TileConstraints.CustomColSumConstraint import CustomColSumTileConstraint
 from Deeploy.Targets.GAP9.TileConstraints.TCneighborGatherConstrain import TCneighborGatherConstrain
+from Deeploy.Targets.GAP9.TileConstraints.Instancenorm2dConstrain import Instancenorm2dTileConstraint
 
 # GAP9-specific tiling ready bindings using ClDma
 GAP9RQSConv2DTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9RQSConv2DBindings,
@@ -199,3 +201,6 @@ FloatSigmoidTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = FloatSi
 
 TCneighborGatherTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = TCneighborGatherBindings,
                                                       tileConstraint = TCneighborGatherConstrain())
+
+Instancenorm2dTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = Instancenorm2dBindings,
+                                                           tileConstraint = Instancenorm2dTileConstraint())

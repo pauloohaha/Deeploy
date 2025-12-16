@@ -33,9 +33,9 @@ from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser,
 
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Templates import AllocateTemplate, FreeTemplate
-from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather
+from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather, Instancenorm2d
 from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, FloatSigmoidParser, \
-    TCneighborGatherParser
+    TCneighborGatherParser, InstanceNorm2DParser
 
 from Deeploy.Targets.GAP9.Tiler import (
     GAP9AddTilingReadyBindings,
@@ -74,7 +74,8 @@ from Deeploy.Targets.GAP9.Tiler import (
     CustomColSumTilingReadyBindings,
     CustomElementMulTilingReadyBindings,
     FloatSigmoidTilingReadyBindings,
-    TCneighborGatherTilingReadyBindings
+    TCneighborGatherTilingReadyBindings,
+    Instancenorm2dTilingReadyBindings
 )
 
 # Create GAP9-specific NodeMappers
@@ -132,6 +133,7 @@ CustomColSumMapper = NodeMapper(CustomColSumParser(), CustomColSumTilingReadyBin
 CustomElementMulMapper = NodeMapper(MulParser(),  CustomElementMulTilingReadyBindings)
 FloatSigmoidMapper = NodeMapper(FloatSigmoidParser(), FloatSigmoidTilingReadyBindings)
 TCneighborGatherMapper = NodeMapper(TCneighborGatherParser(), TCneighborGatherTilingReadyBindings)
+Instancenorm2dMapper = NodeMapper(InstanceNorm2DParser(), Instancenorm2dTilingReadyBindings)
 
 # GAP9-specific mapping using ClDma
 GAP9Mapping = {
@@ -178,7 +180,8 @@ GAP9Mapping = {
     'CustomColScatter': CustomColScatter([CustomColScatterMapper]),
     'CustomElementMul': MulLayer([CustomElementMulMapper]),
     'Sigmoid': Sigmoid([FloatSigmoidMapper]),
-    'TCneighborGather': TCneighborGather([TCneighborGatherMapper])
+    'TCneighborGather': TCneighborGather([TCneighborGatherMapper]),
+    'InstanceNormalization': Instancenorm2d([Instancenorm2dMapper]) #Piao: Hack, instance norm2d is mapped to instancenorm by onnx
 }
 
 
