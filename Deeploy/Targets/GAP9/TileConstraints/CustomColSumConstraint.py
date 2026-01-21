@@ -14,7 +14,7 @@ from Deeploy.TilingExtension.MemoryConstraints import NodeMemoryConstraint
 from Deeploy.TilingExtension.TileConstraint import TileConstraint
 from Deeploy.TilingExtension.TilerModel import TilerModel
 from Deeploy.TilingExtension.TilingCodegen import AbsoluteHyperRectangle, TilingSchedule, VariableReplacementScheme, HyperRectangle
-from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_PATCH_PER_FRAME, DIM, MAX_TOTAL_EDGE
+from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_PATCH_PER_FRAME, MAX_EDGE_PER_PATCH, DIM, MAX_TOTAL_EDGE
 
 class CustomColSumTileConstraint(TileConstraint):
 
@@ -106,9 +106,16 @@ class CustomColSumTileConstraint(TileConstraint):
         for cube in outputCubes:
             inputLoadSchedule.append({"data_in_net": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_TOTAL_EDGE, DIM])), 
                                       "data_in_kk": HyperRectangle(tuple([0]), tuple([2]))})
+            
+        if operatorRepresentation['dir'] == 0:
+            # patch agg
+            sum_buffer_len = MAX_PATCH_PER_FRAME
+        else:
+            # frame agg
+            sum_buffer_len = MAX_EDGE_PER_PATCH
 
         for out in outputCubes:
-            outputLoadSchedule.append({"data_out": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_PATCH_PER_FRAME, DIM]))})
+            outputLoadSchedule.append({"data_out": HyperRectangle(tuple([0, 0, 0]), tuple([1, sum_buffer_len, DIM]))})
 
         tilingSchedule = TilingSchedule(inputBaseOffsets, outputBaseOffsets, inputLoadSchedule, outputLoadSchedule)
         variableReplacementSchedule = VariableReplacementScheme(replacements, replacementTypes)

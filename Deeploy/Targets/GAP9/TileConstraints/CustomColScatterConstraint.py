@@ -14,7 +14,7 @@ from Deeploy.TilingExtension.MemoryConstraints import NodeMemoryConstraint
 from Deeploy.TilingExtension.TileConstraint import TileConstraint
 from Deeploy.TilingExtension.TilerModel import TilerModel
 from Deeploy.TilingExtension.TilingCodegen import AbsoluteHyperRectangle, TilingSchedule, VariableReplacementScheme, HyperRectangle
-from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_PATCH_PER_FRAME, DIM
+from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_PATCH_PER_FRAME, MAX_EDGE_PER_PATCH, DIM
 
 class CustomColScatterTileConstraint(TileConstraint):
 
@@ -112,10 +112,17 @@ class CustomColScatterTileConstraint(TileConstraint):
         inputLoadSchedule = []
         outputLoadSchedule = []
 
+        if operatorRepresentation['dir'] == 0:
+            # patch agg
+            agg_buffer_len = MAX_PATCH_PER_FRAME
+        else:
+            # frame agg
+            agg_buffer_len = MAX_EDGE_PER_PATCH
+
         for cube in outputCubes:
             inputLoadSchedule.append({"data_in_net": cube, 
                                       "data_in_kk": HyperRectangle(tuple([0]), tuple([2])), 
-                                      "data_in_agg": HyperRectangle(tuple([0, 0, 0]), tuple([1, MAX_PATCH_PER_FRAME, DIM]))})
+                                      "data_in_agg": HyperRectangle(tuple([0, 0, 0]), tuple([1, agg_buffer_len, DIM]))})
 
         for out in outputCubes:
             outputLoadSchedule.append({"data_out": out})

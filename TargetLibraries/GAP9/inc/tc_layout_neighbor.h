@@ -6,8 +6,8 @@ Author: Pu Deng <pudeng@iis.ethz.ch>
 #ifndef __TC_LAYOUT_NEIGHBOR_GAP9__
 #define __TC_LAYOUT_NEIGHBOR_GAP9__
 #include "CNN_BasicKernels_fp32.h"
-#define MAX_PATCH_PER_FRAME  5
-#define MAX_EDGE_PER_PATCH 4
+#define MAX_PATCH_PER_FRAME  4
+#define MAX_EDGE_PER_PATCH 3
 #define DIM   ( 384 )
 
 
