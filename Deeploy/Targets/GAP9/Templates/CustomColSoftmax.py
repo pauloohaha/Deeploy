@@ -80,8 +80,7 @@ class CustomColSoftmax(NodeTemplate):
 
 referenceTemplate = CustomColSoftmax("""
 // Customized columnwise SoftMax for DPVO (Name: ${nodeName}, Op: ${nodeOp})
-
-printf("start col softmax kernel\\n");                            
+                       
 ColSoftMax_master_kernel( (float *)${data_in_net}, \
                           (int   *)${data_in_kk}, \
                           (float *)${data_out}, \

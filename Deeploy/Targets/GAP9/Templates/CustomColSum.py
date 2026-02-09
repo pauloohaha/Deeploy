@@ -81,8 +81,7 @@ class CustomnColSum(NodeTemplate):
 
 referenceTemplate = CustomnColSum("""
 // Customized columnwise sum for DPVO (Name: ${nodeName}, Op: ${nodeOp})
-
-printf("start col sum kernel\\n");                            
+                      
 ColSum_master_kernel( (float *)${data_in_net}, \
                           (int   *)${data_in_kk}, \
                           (float *)${data_out}, \

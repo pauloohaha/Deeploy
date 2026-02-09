@@ -31,7 +31,7 @@ from Deeploy.Targets.PULPOpen.DataTypes import PULPDMAFuture
 from Deeploy.Targets.GAP9.Templates import CustomColSoftmax, CustomColSum, CustomColScatter, CustomElementMul, FloatSigmoid, TCneighborGather, \
       Instancenorm2dTemplate
 from Deeploy.Targets.GAP9.DMA.MchanDma import GAP9MchanDma
-from Deeploy.Targets.GAP9.DMA.L3Dma import gap9L3DmaHack
+from Deeploy.Targets.GAP9.DMA.L3Dma import GAP9L3Dma
 
 # Import templates from PULPOpen and Generic
 from Deeploy.Targets.Generic.Templates import AddTemplate, ConcatTemplate, DequantTemplate, FloatReduceMeanTemplate, \
@@ -63,7 +63,7 @@ GAP9Transformer = CodeTransformation([
     MemoryManagementGeneration("L1"),
     TilingVariableReplacement("L2"),
     MemoryAwareFunctionCallClosure(writeback = False, generateStruct = True),
-    PULPL3Tiling("L3", "L2", gap9L3DmaHack),  # Use GAP9-specific L3 DMA
+    PULPL3Tiling("L3", "L2", GAP9L3Dma()),  # Use GAP9-specific L3 DMA
     PULPProfileUntiled(),
     ArgumentStructGeneration(),
     L3MemoryAwareFunctionCallClosure(writeback = False),
@@ -82,7 +82,7 @@ GAP9ClusterTransformer = CodeTransformation([
     MemoryManagementGeneration("L1"),
     TilingVariableReplacement("L2"),
     MemoryAwareFunctionCallClosure(writeback = False, generateStruct = True),
-    PULPL3Tiling("L3", "L2", gap9L3DmaHack),  # Use GAP9-specific L3 DMA
+    PULPL3Tiling("L3", "L2", GAP9L3Dma()),  # Use GAP9-specific L3 DMA
     PULPProfileUntiled(),
     ArgumentStructGeneration(),
     L3MemoryAwareFunctionCallClosure(writeback = False),
@@ -98,7 +98,7 @@ GAP9L2OnlyTransformerL1Transient = CodeTransformation([
     MemoryManagementGeneration("L1"),                  # Manage L1 memory first
     TilingVariableReplacement("L2"),
     MemoryAwareFunctionCallClosure(writeback = False, generateStruct = True),
-    PULPL3Tiling("L3", "L2", gap9L3DmaHack),  # Only L3↔L2 DMA
+    PULPL3Tiling("L3", "L2", GAP9L3Dma()),  # Only L3↔L2 DMA
     PULPProfileUntiled(),
     ArgumentStructGeneration(),
     L3MemoryAwareFunctionCallClosure(writeback = False),

@@ -84,8 +84,7 @@ class CustomColScatter(NodeTemplate):
 
 referenceTemplate = CustomColScatter("""
 // Customized columnwise scatter add for DPVO (Name: ${nodeName}, Op: ${nodeOp})
-
-printf("start col scatter kernel\\n");                    
+                 
 ColScatter_master_kernel( (float *)${data_in_net}, \
                           (int   *)${data_in_kk}, \
                           (float *)${data_in_agg}, \

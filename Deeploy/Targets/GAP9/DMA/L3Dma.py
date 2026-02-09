@@ -60,5 +60,3 @@ class GAP9L3Dma(AsyncDma):
         return operatorRepresentation
 
 
-# Blocking adapter for L3 DMA (used in GAP9 L3 tiling)
-gap9L3DmaHack = BlockingDmaFromAsyncDmaAdapter(GAP9L3Dma())
