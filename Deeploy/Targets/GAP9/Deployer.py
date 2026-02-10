@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2025 ETH Zurich and University of Bologna
 #
 # SPDX-License-Identifier: Apache-2.0
+<<<<<<< HEAD
+=======
+
+>>>>>>> gap9-operators-github
 """
 GAP9-specific deployer that uses cl_dma.h API.
 
@@ -61,7 +65,6 @@ class GAP9Deployer(PULPDeployer):
                          default_channels_first = default_channels_first,
                          deeployStateDir = deeployStateDir,
                          inputOffsets = inputOffsets)
-
         # Override transformers to use GAP9-specific ones with ClDma
         self.Transformer = GAP9Transformer
         self.ClusterTransformer = GAP9ClusterTransformer

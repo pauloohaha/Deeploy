@@ -21,6 +21,7 @@
 
 #include "dory_dma.h"
 #include "dory_mem.h"
+#include "kernel/Layernorm.h"
 
 #include "pmsis.h"
 

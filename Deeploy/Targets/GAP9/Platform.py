@@ -22,7 +22,9 @@ from Deeploy.Targets.GAP9.Tiler import GAP9AddTilingReadyBindings, GAP9ConcatTil
     GAP9RQSTallGEMMTilingReadyBindings, GAP9RQSTilingReadyBindings, GAP9SGDTilingReadyBindings, \
     GAP9SoftmaxCrossEntropyGradTilingReadyBindings, GAP9SoftmaxCrossEntropyTilingReadyBindings, \
     GAP9SoftmaxGradTilingReadyBindings, GAP9SoftmaxTilingReadyBindings, GAP9TransposeTilingReadyBindings, \
-    GAP9UniformRQSTilingReadyBindings
+    GAP9UniformRQSTilingReadyBindings,     CustomColSoftmaxTilingReadyBindings, CustomColScatterTilingReadyBindings, \
+    CustomColSumTilingReadyBindings, CustomElementMulTilingReadyBindings, FloatSigmoidTilingReadyBindings, \
+    TCneighborGatherTilingReadyBindings, Instancenorm2dTilingReadyBindings
 from Deeploy.Targets.Generic.Bindings import BasicGEMMBindings, BasicPad1DBindings, BasicPad2DBindings, \
     BasicRQIntegerDivBinding
 from Deeploy.Targets.Generic.Layers import AddLayer, ConcatLayer, ConvLayer, GatherLayer, GELULayer, GEMMLayer, \
@@ -43,6 +45,11 @@ from Deeploy.Targets.PULPOpen.Layers import PULPRQSConvLayer, PULPRQSGEMMLayer
 from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser, PULPDWConv1DParser, \
     PULPDWConv2DParser, PULPFPConv2DParser, PULPFPDWConv2DParser, PULPGEMMParser, PULPMatrixVecParser, \
     PULPTallGEMMParser
+
+# Import GAP9-specific tiler bindings
+from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather, Instancenorm2d
+from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, FloatSigmoidParser, \
+    TCneighborGatherParser, InstanceNorm2DParser
 
 # Create GAP9-specific NodeMappers
 GAP9_RQAddMapper = NodeMapper(RQAddParser(), GAP9RQAddTilingReadyBindings)
@@ -93,6 +100,13 @@ GAP9_SGDMapper = NodeMapper(SGDParser(), GAP9SGDTilingReadyBindings)
 GAP9_QuantMapper = NodeMapper(QuantParser(), BasicQuantBindings)
 GAP9_DequantMapper = NodeMapper(DequantParser(), BasicDequantBindings)
 GAP9_GEMMDequantMapper = NodeMapper(PULPGEMMParser(), BasicGEMMBindings)
+CustomColSoftmaxMapper = NodeMapper(CustomColSoftmaxParser(), CustomColSoftmaxTilingReadyBindings)
+CustomColScatterMapper = NodeMapper(CustomColScatterParser(), CustomColScatterTilingReadyBindings)
+CustomColSumMapper = NodeMapper(CustomColSumParser(), CustomColSumTilingReadyBindings)
+CustomElementMulMapper = NodeMapper(MulParser(),  CustomElementMulTilingReadyBindings)
+FloatSigmoidMapper = NodeMapper(FloatSigmoidParser(), FloatSigmoidTilingReadyBindings)
+TCneighborGatherMapper = NodeMapper(TCneighborGatherParser(), TCneighborGatherTilingReadyBindings)
+Instancenorm2dMapper = NodeMapper(InstanceNorm2DParser(), Instancenorm2dTilingReadyBindings)
 
 # GAP9-specific mapping using ClDma
 GAP9Mapping = {
@@ -171,7 +185,21 @@ GAP9Mapping = {
     'SoftmaxCrossEntropyLossGrad':
         SoftmaxCrossEntropyLossGradLayer([GAP9_SoftmaxCrossEntropyLossGradMapper]),
     'SGD':
-        SGDLayer([GAP9_SGDMapper])
+        SGDLayer([GAP9_SGDMapper],),
+    'CustomColSoftmax': 
+        CustomColSoftmax([CustomColSoftmaxMapper]),
+    'CustomColSum': 
+        CustomColSum([CustomColSumMapper]),
+    'CustomColScatter': 
+        CustomColScatter([CustomColScatterMapper]),
+    'CustomElementMul': 
+        MulLayer([CustomElementMulMapper]),
+    'Sigmoid': 
+        Sigmoid([FloatSigmoidMapper]),
+    'TCneighborGather': 
+        TCneighborGather([TCneighborGatherMapper]),
+    'InstanceNormalization': 
+        Instancenorm2d([Instancenorm2dMapper]) #Piao: Hack, instance norm2d is mapped to instancenorm by onnx
 }
 
 

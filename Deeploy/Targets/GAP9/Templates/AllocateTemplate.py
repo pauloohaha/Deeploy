@@ -7,7 +7,6 @@ from Deeploy.DeeployTypes import NodeTemplate
 gap9L2InitTemplate = NodeTemplate("${type.typeName} ${name};\n")
 
 gap9L1InitTemplate = NodeTemplate("${type.typeName} ${name};\n")
-
 gap9L2AllocateTemplate = NodeTemplate(
     "${name} = (${type.typeName}) pi_l2_malloc(sizeof(${type.referencedType.typeName}) * ${size});\n")
 

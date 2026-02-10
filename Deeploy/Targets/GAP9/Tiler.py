@@ -17,7 +17,9 @@ from Deeploy.Targets.GAP9.Bindings import GAP9AddBindings, GAP9ConcatBindings, G
     GAP9RQAddBindings, GAP9RQSBindings, GAP9RQSConv2DBindings, GAP9RQSDWConv2DBindings, GAP9RQSGEMMBindings, \
     GAP9RQSiHardswishBindings, GAP9RQSMatrixVecBindings, GAP9RQSTallGEMMBindings, GAP9SGDBindings, \
     GAP9SoftmaxBindings, GAP9SoftmaxCrossEntropyLossBindings, GAP9SoftmaxCrossEntropyLossGradBindings, \
-    GAP9SoftmaxGradBindings, GAP9TransposeBindings, GAP9UniformRQSBindings
+    GAP9SoftmaxGradBindings, GAP9TransposeBindings, GAP9UniformRQSBindings,  CustomColSoftmaxBindings, \
+    CustomColSumBindings, CustomColScatterBindings, CustomElementMulBindings, GAP9FloatDWConv2DBindings, \
+    FloatSigmoidBindings, TCneighborGatherBindings, Instancenorm2dBindings
 from Deeploy.Targets.Generic.TileConstraints.AddTileConstraint import AddTileConstraint
 from Deeploy.Targets.Generic.TileConstraints.ConcatTileConstraint import ConcatTileConstraint
 from Deeploy.Targets.Generic.TileConstraints.iHardswishTileConstraint import iHardswishTileConstraint
@@ -43,6 +45,12 @@ from Deeploy.Targets.PULPOpen.TileConstraints.SGDTileConstraint import SGDTileCo
 from Deeploy.Targets.PULPOpen.TileConstraints.SoftmaxCrossEntropyTileConstraint import \
     SoftmaxCrossEntropyGradTileConstraint, SoftmaxCrossEntropyTileConstraint
 from Deeploy.TilingExtension.TilerExtension import TilingReadyNodeBindings
+
+from Deeploy.Targets.GAP9.TileConstraints.CustomColSoftmaxConstraint import CustomColSoftmaxTileConstraint
+from Deeploy.Targets.GAP9.TileConstraints.CustomColScatterConstraint import CustomColScatterTileConstraint
+from Deeploy.Targets.GAP9.TileConstraints.CustomColSumConstraint import CustomColSumTileConstraint
+from Deeploy.Targets.GAP9.TileConstraints.TCneighborGatherConstrain import TCneighborGatherConstrain
+from Deeploy.Targets.GAP9.TileConstraints.Instancenorm2dConstrain import Instancenorm2dTileConstraint
 
 # GAP9-specific tiling ready bindings using ClDma
 GAP9RQSConv2DTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9RQSConv2DBindings,
@@ -142,3 +150,25 @@ GAP9ReduceSumTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9Re
 
 GAP9SGDTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9SGDBindings,
                                                      tileConstraint = SGDTileConstraint())
+
+
+CustomColSoftmaxTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomColSoftmaxBindings,
+                                                     tileConstraint = CustomColSoftmaxTileConstraint())
+
+CustomColSumTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomColSumBindings,
+                                                     tileConstraint = CustomColSumTileConstraint())
+
+CustomColScatterTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomColScatterBindings,
+                                                     tileConstraint = CustomColScatterTileConstraint())
+
+CustomElementMulTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = CustomElementMulBindings,
+                                                     tileConstraint = MulTileConstraint())
+
+FloatSigmoidTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = FloatSigmoidBindings,
+                                                      tileConstraint = UnaryTileConstraint())
+
+TCneighborGatherTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = TCneighborGatherBindings,
+                                                      tileConstraint = TCneighborGatherConstrain())
+
+Instancenorm2dTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = Instancenorm2dBindings,
+                                                           tileConstraint = Instancenorm2dTileConstraint())

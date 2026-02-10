@@ -21,7 +21,6 @@ macro(add_gvsoc_emulation name target)
     if(GAPY_RUNNER_ARGS)
         # L3 mode: Use gapy with flash layout and readfs
         message(STATUS "[Deeploy GAP9] L3 mode: using gapy with readfs")
-
         set(GAPY "${GAP9_SDK_HOME}/utils/gapy_v2/bin/gapy")
         set(FLASH_LAYOUT "${GAP9_SDK_HOME}/utils/layouts/default_layout_multi_readfs.json")
         set(FSBL_BINARY "${GAP9_SDK_HOME}/install/target/bin/fsbl")
@@ -63,7 +62,6 @@ macro(add_gvsoc_emulation name target)
 
         # Convert list to string for printing
         string(REPLACE ";" " " GAPY_CMD_STR "${GAPY_CMD}")
-
         add_custom_target(gvsoc_${name}
             DEPENDS ${name}
             WORKING_DIRECTORY ${GVSOC_WORKDIR}
@@ -81,7 +79,6 @@ macro(add_gvsoc_emulation name target)
             USES_TERMINAL
             VERBATIM
         )
-
     else()
         # L2 mode: Use traditional gvsoc command directly (no flash/readfs)
         message(STATUS "[Deeploy GAP9] L2 mode: using traditional gvsoc without flash")

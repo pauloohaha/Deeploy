@@ -257,6 +257,8 @@ class VariableBuffer():
         self.is_input: bool = False
         self.is_output: bool = False
 
+        self._targetmemorylevel = {}
+
         self.aliases: Set[str] = set(aliases) if aliases is not None else set()
 
     def _bufferRepresentation(self) -> Dict:
