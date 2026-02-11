@@ -89,5 +89,6 @@ endif()
 
 target_link_libraries(deeploygap9 PUBLIC pulp-nn-mixed)
 
+target_link_libraries(deeploygap9 PUBLIC pmsis)
 target_link_libraries(deeploygap9 PUBLIC m)
 

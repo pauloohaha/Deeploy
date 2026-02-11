@@ -1,10 +1,6 @@
 # SPDX-FileCopyrightText: 2025 ETH Zurich and University of Bologna
 #
 # SPDX-License-Identifier: Apache-2.0
-<<<<<<< HEAD
-=======
-
->>>>>>> gap9-operators-github
 """
 GAP9-specific deployer that uses cl_dma.h API.
 
