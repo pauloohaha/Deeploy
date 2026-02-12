@@ -7,10 +7,35 @@ file(GLOB_RECURSE SOURCES
   "$ENV{GAP_SDK_HOME}/tools/autotiler_v3/CNN_Libraries_fp32/CNN_Bias_Linear_Activation_fp32.c"
 )
 
+
+# Exclude dory_mem and dory_dma from SOURCES (they need different optimization)
+list(FILTER SOURCES EXCLUDE REGEX ".*dory_(mem|dma).*")
+
 # RW: Include PULPOpen sources but exclude dory_mem related files
 file(GLOB_RECURSE PULPOPEN_SOURCES "../PULPOpen/src/**")
 list(FILTER PULPOPEN_SOURCES EXCLUDE REGEX ".*dory_mem.*")
 list(APPEND SOURCES ${PULPOPEN_SOURCES})
+
+# Separate dory library compiled without -O3
+add_library(dory_lib STATIC
+  ${CMAKE_CURRENT_LIST_DIR}/src/dory_mem.c
+  ${CMAKE_CURRENT_LIST_DIR}/src/dory_dma.c
+)
+target_include_directories(dory_lib PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/inc
+  ${CMAKE_CURRENT_LIST_DIR}/../PULPOpen/inc
+)
+target_compile_options(dory_lib PRIVATE
+  -Wno-implicit-function-declaration
+  -Wno-sign-conversion
+  -Wno-sign-compare
+  -Wno-type-limits
+  -Wno-attributes
+  -Wno-incompatible-pointer-types
+  -Og
+)
+target_compile_definitions(dory_lib PUBLIC NUM_CORES=${NUM_CORES})
+target_link_libraries(dory_lib PUBLIC pmsis)
 
 add_deeploy_library(deeploygap9 STATIC ${SOURCES})
 target_include_directories(deeploygap9
@@ -36,8 +61,7 @@ target_compile_options(deeploygap9 PRIVATE
   -Wno-type-limits
   -Wno-attributes
   -Wno-incompatible-pointer-types
-  -Og
-  -g
+  -O3
 )
 
 #RW: Link PULP-NN
@@ -91,4 +115,4 @@ target_link_libraries(deeploygap9 PUBLIC pulp-nn-mixed)
 
 target_link_libraries(deeploygap9 PUBLIC pmsis)
 target_link_libraries(deeploygap9 PUBLIC m)
-
+target_link_libraries(deeploygap9 PUBLIC dory_lib)
