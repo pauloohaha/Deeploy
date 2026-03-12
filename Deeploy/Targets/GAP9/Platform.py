@@ -24,7 +24,8 @@ from Deeploy.Targets.GAP9.Tiler import GAP9AddTilingReadyBindings, GAP9ConcatTil
     GAP9SoftmaxGradTilingReadyBindings, GAP9SoftmaxTilingReadyBindings, GAP9TransposeTilingReadyBindings, \
     GAP9UniformRQSTilingReadyBindings,     CustomColSoftmaxTilingReadyBindings, CustomColScatterTilingReadyBindings, \
     CustomColSumTilingReadyBindings, CustomElementMulTilingReadyBindings, FloatSigmoidTilingReadyBindings, \
-    TCneighborGatherTilingReadyBindings, Instancenorm2dTilingReadyBindings
+    TCneighborGatherTilingReadyBindings, Instancenorm2dTilingReadyBindings, QuantTilingReadyBindings, \
+    DeQuantTilingReadyBindings
 from Deeploy.Targets.Generic.Bindings import BasicGEMMBindings, BasicPad1DBindings, BasicPad2DBindings, \
     BasicRQIntegerDivBinding
 from Deeploy.Targets.Generic.Layers import AddLayer, ConcatLayer, ConvLayer, GatherLayer, GELULayer, GEMMLayer, \
@@ -39,7 +40,7 @@ from Deeploy.Targets.Generic.Parsers import AddParser, ConcatParser, DequantPars
     SoftmaxCrossEntropyLossGradParser, SoftmaxCrossEntropyLossParser, SoftmaxGradParser, SoftmaxParser, \
     TransposeParser, UniformRequantShiftParser, UnsqueezeParser, iHardswishParser, iRMSNormParser, iSoftmaxParser
 from Deeploy.Targets.Generic.Templates import AllocateTemplate as BasicAllocateTemplate
-from Deeploy.Targets.PULPOpen.Bindings import BasicDequantBindings, BasicQuantBindings, PULPConv1DBinding, \
+from Deeploy.Targets.PULPOpen.Bindings import PULPConv1DBinding, \
     PULPDMASliceBindings, PULPDWConv1DBinding, PULPReduceMeanBindings, PULPSliceBindings
 from Deeploy.Targets.PULPOpen.Layers import PULPRQSConvLayer, PULPRQSGEMMLayer
 from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser, PULPDWConv1DParser, \
@@ -97,8 +98,8 @@ GAP9_SoftmaxCrossEntropyLossMapper = NodeMapper(SoftmaxCrossEntropyLossParser(),
 GAP9_SoftmaxCrossEntropyLossGradMapper = NodeMapper(SoftmaxCrossEntropyLossGradParser(),
                                                     GAP9SoftmaxCrossEntropyGradTilingReadyBindings)
 GAP9_SGDMapper = NodeMapper(SGDParser(), GAP9SGDTilingReadyBindings)
-GAP9_QuantMapper = NodeMapper(QuantParser(), BasicQuantBindings)
-GAP9_DequantMapper = NodeMapper(DequantParser(), BasicDequantBindings)
+GAP9_QuantMapper = NodeMapper(QuantParser(), QuantTilingReadyBindings)
+GAP9_DequantMapper = NodeMapper(DequantParser(), DeQuantTilingReadyBindings)
 GAP9_GEMMDequantMapper = NodeMapper(PULPGEMMParser(), BasicGEMMBindings)
 CustomColSoftmaxMapper = NodeMapper(CustomColSoftmaxParser(), CustomColSoftmaxTilingReadyBindings)
 CustomColScatterMapper = NodeMapper(CustomColScatterParser(), CustomColScatterTilingReadyBindings)

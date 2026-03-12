@@ -12,6 +12,7 @@ import copy
 
 from Deeploy.Targets.GAP9.Bindings import GAP9AddBindings, GAP9ConcatBindings, GAP9FloatConv2DBindings, \
     GAP9FloatDWConv2DBindings, GAP9FloatGELUBinding, GAP9FloatGEMMBindings, GAP9GatherBindings, \
+    GAP9QuantBindings, GAP9DequantBindings, \
     GAP9iHardswishBindings, GAP9iRMSNormBindings, GAP9iRQSGELUBindings, GAP9LayernormBinding, GAP9MatMulBindings, \
     GAP9MaxPool2DBindings, GAP9MulBindings, GAP9ReduceSumBindings, GAP9ReluBinding, GAP9ReshapeBindings, \
     GAP9RQAddBindings, GAP9RQSBindings, GAP9RQSConv2DBindings, GAP9RQSDWConv2DBindings, GAP9RQSGEMMBindings, \
@@ -20,6 +21,8 @@ from Deeploy.Targets.GAP9.Bindings import GAP9AddBindings, GAP9ConcatBindings, G
     GAP9SoftmaxGradBindings, GAP9TransposeBindings, GAP9UniformRQSBindings,  CustomColSoftmaxBindings, \
     CustomColSumBindings, CustomColScatterBindings, CustomElementMulBindings, GAP9FloatDWConv2DBindings, \
     FloatSigmoidBindings, TCneighborGatherBindings, Instancenorm2dBindings
+
+
 from Deeploy.Targets.Generic.TileConstraints.AddTileConstraint import AddTileConstraint
 from Deeploy.Targets.Generic.TileConstraints.ConcatTileConstraint import ConcatTileConstraint
 from Deeploy.Targets.Generic.TileConstraints.iHardswishTileConstraint import iHardswishTileConstraint
@@ -172,3 +175,9 @@ TCneighborGatherTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = TCn
 
 Instancenorm2dTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = Instancenorm2dBindings,
                                                            tileConstraint = Instancenorm2dTileConstraint())
+
+QuantTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9QuantBindings,
+                                                           tileConstraint = UnaryTileConstraint())
+
+DeQuantTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9DequantBindings,
+                                                           tileConstraint = UnaryTileConstraint())
