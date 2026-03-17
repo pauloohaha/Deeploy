@@ -6,7 +6,7 @@ import numpy as np
 import onnx_graphsurgeon as gs
 
 from Deeploy.DeeployTypes import ConstantBuffer, DeploymentEngine, DeploymentPlatform, NetworkContext, NodeMapper, \
-    NodeTemplate, StructBuffer, TransientBuffer, VariableBuffer
+    NodeTemplate, StructBuffer, TopologyOptimizer, TransientBuffer, VariableBuffer
 from Deeploy.MemoryLevelExtension.MemoryLevels import MemoryHierarchy, MemoryLevel
 from Deeploy.MemoryLevelExtension.NetworkDeployers.MemoryLevelDeployer import MemoryPlatform, MemoryPlatformWrapper
 from Deeploy.Targets.GAP9.Templates import AllocateTemplate, FreeTemplate
@@ -40,8 +40,10 @@ from Deeploy.Targets.Generic.Parsers import AddParser, ConcatParser, DequantPars
     SoftmaxCrossEntropyLossGradParser, SoftmaxCrossEntropyLossParser, SoftmaxGradParser, SoftmaxParser, \
     TransposeParser, UniformRequantShiftParser, UnsqueezeParser, iHardswishParser, iRMSNormParser, iSoftmaxParser
 from Deeploy.Targets.Generic.Templates import AllocateTemplate as BasicAllocateTemplate
+from Deeploy.Targets.Generic.TopologyOptimizationPasses.Passes import MatMulAddMergePass
 from Deeploy.Targets.PULPOpen.Bindings import PULPConv1DBinding, \
     PULPDMASliceBindings, PULPDWConv1DBinding, PULPReduceMeanBindings, PULPSliceBindings
+from Deeploy.Targets.PULPOpen.Platform import PULPOptimizer
 from Deeploy.Targets.PULPOpen.Layers import PULPRQSConvLayer, PULPRQSGEMMLayer
 from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser, PULPDWConv1DParser, \
     PULPDWConv2DParser, PULPFPConv2DParser, PULPFPDWConv2DParser, PULPGEMMParser, PULPMatrixVecParser, \
@@ -108,6 +110,12 @@ CustomElementMulMapper = NodeMapper(MulParser(),  CustomElementMulTilingReadyBin
 FloatSigmoidMapper = NodeMapper(FloatSigmoidParser(), FloatSigmoidTilingReadyBindings)
 TCneighborGatherMapper = NodeMapper(TCneighborGatherParser(), TCneighborGatherTilingReadyBindings)
 Instancenorm2dMapper = NodeMapper(InstanceNorm2DParser(), Instancenorm2dTilingReadyBindings)
+
+GAP9Optimizer = TopologyOptimizer([
+    *PULPOptimizer.passes[:12],
+    MatMulAddMergePass(),
+    *PULPOptimizer.passes[12:],
+], name = "GAP9Optimizer")
 
 # GAP9-specific mapping using ClDma
 GAP9Mapping = {
