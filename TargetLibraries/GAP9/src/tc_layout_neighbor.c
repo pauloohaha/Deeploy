@@ -21,35 +21,37 @@ static inline unsigned int __attribute__((always_inline)) ChunkSize(unsigned int
 	return Chunk;
 }
 
-void TC_layout_neighbor_gather(TC_layout_neighbor_gather_T *Arg) {
-    float * In = Arg->In;
-    float * Out = Arg->Out;
+void TC_layout_neighbor_gather_int8(TC_layout_neighbor_gather_int8_T *Arg) {
+    int8_t * In = Arg->In;
+    int8_t * Out = Arg->Out;
     int patches    = Arg->kk_buff[0];
     int dst_frames = Arg->kk_buff[1];
     int dir  = Arg->dir;
 
     unsigned int CoreId = gap_coreid();
-    unsigned int Chunk = ChunkSize(DIM*patches);
-    unsigned int First = Chunk*CoreId;
-    unsigned int Last = Min(First+Chunk, DIM*patches);
-
+    unsigned int total_quads = (DIM * patches) / 4;
+    unsigned int Chunk = ChunkSize(total_quads);
+    unsigned int First = Chunk * CoreId;
+    unsigned int Last = Min(First + Chunk, total_quads);
 
     for(int out_dst_frame = 0; out_dst_frame < dst_frames-1; out_dst_frame++){
-      for(unsigned int element_id = First; element_id < Last; element_id++){
+      for(unsigned int q = First; q < Last; q++){
+        unsigned int element_id = q * 4;
         unsigned int in_idx = out_dst_frame*MAX_PATCH_PER_FRAME*DIM + element_id;
         if(dir == 1) in_idx += MAX_PATCH_PER_FRAME*DIM;
         unsigned int out_idx = out_dst_frame*MAX_PATCH_PER_FRAME*DIM + element_id;
         if(dir == 0) out_idx += MAX_PATCH_PER_FRAME*DIM;
-        
-        Out[out_idx] = In[in_idx];
+        *((v4s *)&Out[out_idx]) = *((v4s *)&In[in_idx]);
       }
     }
-    
-    for(unsigned int element_id = First; element_id < Last; element_id++){
-      unsigned out_idx = (dir) ? element_id + (dst_frames-1)*MAX_PATCH_PER_FRAME*DIM : element_id ;
-      Out[out_idx] = 0.0;
+
+    v4s zero = (v4s){0,0,0,0};
+    for(unsigned int q = First; q < Last; q++){
+      unsigned int element_id = q * 4;
+      unsigned int out_idx = (dir) ? element_id + (dst_frames-1)*MAX_PATCH_PER_FRAME*DIM : element_id;
+      *((v4s *)&Out[out_idx]) = zero;
     }
 
     return;
-
 }
+

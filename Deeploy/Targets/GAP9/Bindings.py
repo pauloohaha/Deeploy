@@ -454,7 +454,9 @@ FloatSigmoidBindings = [NodeBinding(ReluChecker([PointerClass(float32_t)], [Poin
                               FloatSigmoid.referenceTemplate, GAP9Transformer)]
 
 TCneighborGatherBindings = [NodeBinding(ReluChecker([PointerClass(float32_t)], [PointerClass(float32_t)]),
-                              TCneighborGather.referenceTemplate, GAP9Transformer)]
+                              TCneighborGather.referenceTemplate, GAP9Transformer)] + [
+                            NodeBinding(ReluChecker([PointerClass(int8_t)], [PointerClass(int8_t)]),
+                                                          TCneighborGather.referenceTemplate, GAP9Transformer)]
 
 
 Instancenorm2dBindings = [NodeBinding(
