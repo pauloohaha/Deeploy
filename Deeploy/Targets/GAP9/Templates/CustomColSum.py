@@ -26,9 +26,9 @@ class CustomnColSum(NodeTemplate):
       out_net_Buffer = ctxt.lookup(operatorRepresentation['data_out'])
 
       #expect the input and output buffers in L2
-      in_net_Buffer._targetmemorylevel['CustomnColSum'] = 'L2'
-      in_kk_Buffer._targetmemorylevel['CustomnColSum'] = 'L2'
-      out_net_Buffer._targetmemorylevel['CustomnColSum'] = 'L2'
+      in_net_Buffer._targetmemorylevel['CustomColSum'] = 'L2'
+      in_kk_Buffer._targetmemorylevel['CustomColSum'] = 'L2'
+      out_net_Buffer._targetmemorylevel['CustomColSum'] = 'L2'
       out_net_Buffer._alias = in_net_Buffer.name
 
       return ctxt, operatorRepresentation, []

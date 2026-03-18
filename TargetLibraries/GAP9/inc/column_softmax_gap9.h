@@ -9,9 +9,9 @@ Author: Pu Deng <pudeng@iis.ethz.ch>
 #include "at_api.h"
 #include "CNN_BasicKernels_fp32.h"
 
-#define MAX_PATCH_PER_FRAME  4
-#define MAX_EDGE_PER_PATCH 3
-#define DIM   ( 384 )
+#define MAX_PATCH_PER_FRAME  24
+#define MAX_EDGE_PER_PATCH 19
+#define DIM   ( 96 )
 
 typedef struct {
   signed char *__restrict__ In;           /**< Pointer to input tile */

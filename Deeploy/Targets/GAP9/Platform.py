@@ -113,7 +113,7 @@ Instancenorm2dMapper = NodeMapper(InstanceNorm2DParser(), Instancenorm2dTilingRe
 
 GAP9Optimizer = TopologyOptimizer([
     *PULPOptimizer.passes[:12],
-    MatMulAddMergePass(),
+    # MatMulAddMergePass(),
     *PULPOptimizer.passes[12:],
 ], name = "GAP9Optimizer")
 
@@ -340,4 +340,7 @@ class MemoryGAP9PlatformWrapper(MemoryPlatformWrapper):
     def getTargetMemoryLevel(self, node: gs.Node, tensorName: str, ctxt: NetworkContext) -> str:
         if node.op in self.untiledOps:
             return ctxt.lookup(tensorName)._memoryLevel
+        elif node.op in ctxt.lookup(tensorName)._targetmemorylevel:
+            return ctxt.lookup(tensorName)._targetmemorylevel[node.op]
         return super().getTargetMemoryLevel(node, tensorName, ctxt)
+

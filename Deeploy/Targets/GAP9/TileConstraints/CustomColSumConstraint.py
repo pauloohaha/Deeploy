@@ -44,6 +44,7 @@ class CustomColSumTileConstraint(TileConstraint):
     def addPolicyConstraint(tilerModel: TilerModel, parseDict: Dict, ctxt: NetworkContext) -> TilerModel:
         inputNetBufferName  = parseDict['data_in_net']
         inputKKBufferName   = parseDict['data_in_kk']
+        outputBufferName    = parseDict['data_out']
         inputNetBuffer  = ctxt.lookup(inputNetBufferName)
         inputKKBuffer   = ctxt.lookup(inputKKBufferName)
 
@@ -64,6 +65,19 @@ class CustomColSumTileConstraint(TileConstraint):
         netDim1FullSize = inputNetBuffer.shape[1]
         netDim1Var = tilerModel.getTensorDimVar(tensorName=inputNetBufferName, dimIdx=1)
         tilerModel.addConstraint(netDim1FullSize == netDim1Var)
+
+        # for second dim, the output should be equal to MAX_PATCH_PER_FRAME if dir == 0, otherwise MAX_EDGE_PER_PATCH
+        if parseDict['dir'] == 0:
+            outputDim = tilerModel.getTensorDimVar(tensorName = outputBufferName, dimIdx = 1)
+            tilerModel.addConstraint(outputDim == MAX_PATCH_PER_FRAME)
+        else:
+            outputDim = tilerModel.getTensorDimVar(tensorName = outputBufferName, dimIdx = 1)
+            tilerModel.addConstraint(outputDim == MAX_EDGE_PER_PATCH)
+        
+        # for third dim, should be DIM
+        inputDim = tilerModel.getTensorDimVar(tensorName = inputNetBufferName, dimIdx = 2)
+        tilerModel.addConstraint(inputDim == DIM)
+
 
         return tilerModel
 
