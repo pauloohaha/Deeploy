@@ -1,0 +1,47 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Layers.Instancenorm2d
+==========================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Layers
+
+.. autoclass:: Instancenorm2d
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~Instancenorm2d.__init__
+      ~Instancenorm2d.bind
+      ~Instancenorm2d.broadcast
+      ~Instancenorm2d.codeTransform
+      ~Instancenorm2d.computeOps
+      ~Instancenorm2d.computeShapes
+      ~Instancenorm2d.discardCurrentMapper
+      ~Instancenorm2d.generate
+      ~Instancenorm2d.parse
+      ~Instancenorm2d.resetDiscardedMappers
+      ~Instancenorm2d.typeCheck
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Instancenorm2d.maps
+      ~Instancenorm2d.mapper
+      ~Instancenorm2d.discardedMappers
+      ~Instancenorm2d.node
+   
+   

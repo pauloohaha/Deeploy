@@ -1,0 +1,47 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Layers.CustomColSum
+========================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Layers
+
+.. autoclass:: CustomColSum
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~CustomColSum.__init__
+      ~CustomColSum.bind
+      ~CustomColSum.broadcast
+      ~CustomColSum.codeTransform
+      ~CustomColSum.computeOps
+      ~CustomColSum.computeShapes
+      ~CustomColSum.discardCurrentMapper
+      ~CustomColSum.generate
+      ~CustomColSum.parse
+      ~CustomColSum.resetDiscardedMappers
+      ~CustomColSum.typeCheck
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CustomColSum.maps
+      ~CustomColSum.mapper
+      ~CustomColSum.discardedMappers
+      ~CustomColSum.node
+   
+   

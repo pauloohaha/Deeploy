@@ -1,0 +1,47 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Layers.TCneighborGather
+============================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Layers
+
+.. autoclass:: TCneighborGather
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~TCneighborGather.__init__
+      ~TCneighborGather.bind
+      ~TCneighborGather.broadcast
+      ~TCneighborGather.codeTransform
+      ~TCneighborGather.computeOps
+      ~TCneighborGather.computeShapes
+      ~TCneighborGather.discardCurrentMapper
+      ~TCneighborGather.generate
+      ~TCneighborGather.parse
+      ~TCneighborGather.resetDiscardedMappers
+      ~TCneighborGather.typeCheck
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TCneighborGather.maps
+      ~TCneighborGather.mapper
+      ~TCneighborGather.discardedMappers
+      ~TCneighborGather.node
+   
+   

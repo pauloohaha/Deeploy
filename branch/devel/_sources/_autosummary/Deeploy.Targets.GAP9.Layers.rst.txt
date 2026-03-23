@@ -1,0 +1,40 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Layers
+===========================
+
+.. automodule:: Deeploy.Targets.GAP9.Layers
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      CustomColScatter
+      CustomColSoftmax
+      CustomColSum
+      Instancenorm2d
+      Sigmoid
+      TCneighborGather
+   
+   
+
+   
+   
+   
+
+
+

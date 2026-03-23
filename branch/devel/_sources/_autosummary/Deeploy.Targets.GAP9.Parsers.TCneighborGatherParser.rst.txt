@@ -1,0 +1,39 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Parsers.TCneighborGatherParser
+===================================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Parsers
+
+.. autoclass:: TCneighborGatherParser
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~TCneighborGatherParser.__init__
+      ~TCneighborGatherParser.parse
+      ~TCneighborGatherParser.parseInputs
+      ~TCneighborGatherParser.parseNode
+      ~TCneighborGatherParser.parseNodeCtxt
+      ~TCneighborGatherParser.parseOutputs
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TCneighborGatherParser.operatorRepresentation
+   
+   

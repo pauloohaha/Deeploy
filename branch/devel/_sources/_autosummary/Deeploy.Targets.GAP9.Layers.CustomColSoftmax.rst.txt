@@ -1,0 +1,47 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Layers.CustomColSoftmax
+============================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Layers
+
+.. autoclass:: CustomColSoftmax
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~CustomColSoftmax.__init__
+      ~CustomColSoftmax.bind
+      ~CustomColSoftmax.broadcast
+      ~CustomColSoftmax.codeTransform
+      ~CustomColSoftmax.computeOps
+      ~CustomColSoftmax.computeShapes
+      ~CustomColSoftmax.discardCurrentMapper
+      ~CustomColSoftmax.generate
+      ~CustomColSoftmax.parse
+      ~CustomColSoftmax.resetDiscardedMappers
+      ~CustomColSoftmax.typeCheck
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CustomColSoftmax.maps
+      ~CustomColSoftmax.mapper
+      ~CustomColSoftmax.discardedMappers
+      ~CustomColSoftmax.node
+   
+   

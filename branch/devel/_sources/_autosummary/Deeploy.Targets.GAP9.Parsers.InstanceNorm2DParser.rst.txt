@@ -1,0 +1,39 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Parsers.InstanceNorm2DParser
+=================================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Parsers
+
+.. autoclass:: InstanceNorm2DParser
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~InstanceNorm2DParser.__init__
+      ~InstanceNorm2DParser.parse
+      ~InstanceNorm2DParser.parseInputs
+      ~InstanceNorm2DParser.parseNode
+      ~InstanceNorm2DParser.parseNodeCtxt
+      ~InstanceNorm2DParser.parseOutputs
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~InstanceNorm2DParser.operatorRepresentation
+   
+   

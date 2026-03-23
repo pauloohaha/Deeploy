@@ -1,0 +1,47 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Layers.CustomColScatter
+============================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Layers
+
+.. autoclass:: CustomColScatter
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~CustomColScatter.__init__
+      ~CustomColScatter.bind
+      ~CustomColScatter.broadcast
+      ~CustomColScatter.codeTransform
+      ~CustomColScatter.computeOps
+      ~CustomColScatter.computeShapes
+      ~CustomColScatter.discardCurrentMapper
+      ~CustomColScatter.generate
+      ~CustomColScatter.parse
+      ~CustomColScatter.resetDiscardedMappers
+      ~CustomColScatter.typeCheck
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CustomColScatter.maps
+      ~CustomColScatter.mapper
+      ~CustomColScatter.discardedMappers
+      ~CustomColScatter.node
+   
+   

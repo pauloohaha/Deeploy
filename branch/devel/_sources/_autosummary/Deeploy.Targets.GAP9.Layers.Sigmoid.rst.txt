@@ -1,0 +1,47 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Layers.Sigmoid
+===================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Layers
+
+.. autoclass:: Sigmoid
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~Sigmoid.__init__
+      ~Sigmoid.bind
+      ~Sigmoid.broadcast
+      ~Sigmoid.codeTransform
+      ~Sigmoid.computeOps
+      ~Sigmoid.computeShapes
+      ~Sigmoid.discardCurrentMapper
+      ~Sigmoid.generate
+      ~Sigmoid.parse
+      ~Sigmoid.resetDiscardedMappers
+      ~Sigmoid.typeCheck
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Sigmoid.maps
+      ~Sigmoid.mapper
+      ~Sigmoid.discardedMappers
+      ~Sigmoid.node
+   
+   

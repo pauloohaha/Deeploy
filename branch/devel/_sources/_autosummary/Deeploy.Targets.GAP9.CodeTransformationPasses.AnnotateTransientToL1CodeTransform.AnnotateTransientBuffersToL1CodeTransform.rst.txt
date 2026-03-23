@@ -1,0 +1,29 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.CodeTransformationPasses.AnnotateTransientToL1CodeTransform.AnnotateTransientBuffersToL1CodeTransform
+==========================================================================================================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.CodeTransformationPasses.AnnotateTransientToL1CodeTransform
+
+.. autoclass:: AnnotateTransientBuffersToL1CodeTransform
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~AnnotateTransientBuffersToL1CodeTransform.__init__
+      ~AnnotateTransientBuffersToL1CodeTransform.apply
+   
+   
+
+   
+   
+   

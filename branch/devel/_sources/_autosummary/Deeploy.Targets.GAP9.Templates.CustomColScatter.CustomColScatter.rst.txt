@@ -1,0 +1,33 @@
+.. SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
+..
+.. SPDX-License-Identifier: Apache-2.0
+
+Deeploy.Targets.GAP9.Templates.CustomColScatter.CustomColScatter
+================================================================
+
+.. currentmodule:: Deeploy.Targets.GAP9.Templates.CustomColScatter
+
+.. autoclass:: CustomColScatter
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   
+   .. rubric:: Methods
+   .. automethod:: __init__
+
+   .. autosummary::
+   
+      ~CustomColScatter.__init__
+      ~CustomColScatter.alignToContext
+      ~CustomColScatter.computeTransientBuffersSize
+      ~CustomColScatter.generate
+      ~CustomColScatter.hoistTransientBuffers
+      ~CustomColScatter.internalSize
+   
+   
+
+   
+   
+   
