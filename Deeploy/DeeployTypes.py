@@ -350,6 +350,7 @@ class VariableBuffer():
             queue |= buffNext.aliases - visited
         return live
 
+    @property
     def sizeInBytes(self) -> int:
         """Returns the size of this VariableBuffer in bytes
 
@@ -388,6 +389,7 @@ class TransientBuffer(VariableBuffer):
     def __repr__(self) -> str:
         return f'TransientBuffer: name: {self.name}, size: {self.size}'
 
+    @property
     def sizeInBytes(self) -> int:
         return int(self.size)
 
@@ -506,9 +508,20 @@ class _ReferenceBuffer(VariableBuffer):
         repr['offset'] = self._offset
         return repr
 
+    def __str__(self) -> str:
+        if hasattr(self, "_type"):
+            return f'VariableBuffer: name: {self.name}, type: {self._type}, reference: {self._referenceName}+{self._offset}'
+
+        return f'VariableBuffer: name: {self.name}, reference: {self._referenceName}+{self._offset}'
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 class NetworkContext():
-    """The global context of the compiler. This object holds all the typing inferred in the type-checking passes within the respective buffers. It holds all hoisted transient buffers, struct buffers, and global definitions. The context is the source of truth for all code generation in the backend.
+    """The global context of the compiler. This object holds all the typing inferred in the type-checking passes within
+    the respective buffers. It holds all hoisted transient buffers, struct buffers, and global definitions.
+    The context is the source of truth for all code generation in the backend.
     """
 
     def __init__(self,
@@ -516,11 +529,11 @@ class NetworkContext():
                  constantBuffer: Type[ConstantBuffer],
                  structBuffer: Type[StructBuffer],
                  transientBuffer: Type[TransientBuffer],
-                 globalObjects = {},
-                 localObjects = {},
+                 globalObjects: Optional[OrderedDict] = None,
+                 localObjects: Optional[OrderedDict] = None,
                  name: str = 'DeeployNetwork'):
-        self.globalObjects = OrderedDict()
-        self.localObjects = OrderedDict()
+        self.globalObjects = globalObjects if globalObjects is not None else OrderedDict()
+        self.localObjects = localObjects if localObjects is not None else OrderedDict()
         self.VariableBuffer = variableBuffer
         self.ConstantBuffer = constantBuffer
         self.StructBuffer = structBuffer
@@ -546,8 +559,8 @@ class NetworkContext():
         Raises
         ------
         Exception
-            Raises an Exception if aliases are circular
-
+            Raises an Exception if aliases are circular, i.e. there
+            is no underlying VariableBuffer
         """
         seenAliases: Set[str] = set()
         alias = self.lookup(name)
@@ -573,8 +586,8 @@ class NetworkContext():
         Raises
         ------
         Exception
-            Raises an Exception if references are circular
-
+            Raises an Exception if references are circular, i.e. there
+            is no underlying VariableBuffer
         """
         seenRefs = set()
         while isinstance(ref, _ReferenceBuffer):
@@ -924,7 +937,7 @@ class NetworkContext():
         reference : VariableBuffer
             Referenced VariableBuffer
         shape: Tuple[int, ...]
-            Shape of the _ReferenceBuffer
+            Shape of the reference
         offset: Union[int, str, VariableBuffer]
             Offset from the reference
         override_type: Optional[Type[BaseType]]
@@ -934,7 +947,6 @@ class NetworkContext():
         -------
         _ReferenceBuffer
             Returns the newly registered _ReferenceBuffer
-
         """
         ref = _ReferenceBuffer(name, reference, shape, offset)
         if override_type is not None:

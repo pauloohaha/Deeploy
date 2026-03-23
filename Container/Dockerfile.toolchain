@@ -10,12 +10,15 @@ ARG CMAKE_VERSION=3.31.1
 ENV DEBIAN_FRONTEND=noninteractive
 
 ENV TZ=Etc/UTC
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 ENV CC="ccache gcc"
 ENV CXX="ccache g++"
 ENV CCACHE_DIR=/ccache
+ENV DEEPLOY_INSTALL_DIR=/app/install
 
 # Change the working directory
-WORKDIR /app
+WORKDIR /app/build
 
 COPY Container/amd64.list ./
 
@@ -109,8 +112,5 @@ RUN --mount=type=cache,target=/ccache \
     make picolibc-riscv && make gap9-toolchain && ccache -s
 
 # Remove unecessary files
-RUN rm -rf cmake-* && \
-    rm -rf toolchain/llvm-project && \
-    rm -rf toolchain/minimalloc && \
-    rm -rf toolchain/picolibc && \
-    rm -rf toolchain/gap9-toolchain
+WORKDIR /app
+RUN rm -rf build

@@ -57,19 +57,28 @@ XSIMD_VERSION ?= 13.2.0
 XTENSOR_VERSION ?= 0.25.0
 GAP9_SDK_COMMIT_HASH ?= dfabdddd0e78b9b750a0eb46eee85d5a2c9ae853
 
+GAP_RISCV_GCC_COMMIT_HASH ?= fbb9fa450d01c1c170f94af817490f41c5ef7971
+# GAP9_SDK_COMMIT_HASH ?= 1796873cec9ca1feb352a6fe980b627df979bdd1 # v5.21.1
+# GAP9_SDK_COMMIT_HASH ?= 8c42b65338e554ac73c749f94ecddd23a9ee5490 # v5.21.1-staging-1
+GAP9_SDK_COMMIT_HASH ?= d075c068e8a531e74a9f7cdee74c52cec32253b9 # v5.21.2
+GAP_SDK_URL ?= git@github.com:pulp-platform/gap-sdk.git
+
 OS  := $(shell uname -s)
 ARCH:= $(shell uname -m)
 
 ifeq ($(OS),Linux)
 	ifeq ($(ARCH),x86_64)
-		TARGET := x86_64-unknown-linux-gnu
+		TARGET_BANSHEE := x86_64-unknown-linux-gnu
+		TARGET_GAP9 := amd64
 	else ifeq ($(ARCH),aarch64)
-		TARGET := aarch64-unknown-linux-gnu
+		TARGET_BANSHEE := aarch64-unknown-linux-gnu
+		TARGET_GAP9 := arm64
 	else
 		$(error unsupported Linux architecture $(ARCH))
 	endif
 else ifeq ($(OS),Darwin)
-	TARGET := aarch64-apple-darwin
+	TARGET_BANSHEE := aarch64-apple-darwin
+	$(warning "Deeploy is not fully supported on macOS, some components such as the GAP9 GCC toolchain are not available. Please use Linux (or Docker) for the best experience.")
 else
 	$(error unsupported platform $(OS))
 endif
@@ -419,35 +428,22 @@ ${PULP_SDK_INSTALL_DIR}: ${TOOLCHAIN_DIR}/pulp-sdk
 
 pulp-sdk: ${PULP_SDK_INSTALL_DIR}
 
-${TOOLCHAIN_DIR}/gap9-toolchain:
-	cd ${TOOLCHAIN_DIR} && \
-	git clone https://github.com/GreenWaves-Technologies/gap_riscv_toolchain_ubuntu.git --depth 1 -b master gap9-toolchain
-
-${GAP_RISCV_GCC_INSTALL_DIR}: ${TOOLCHAIN_DIR}/gap9-toolchain
-	cd ${TOOLCHAIN_DIR}/gap9-toolchain  && \
-	mkdir -p ${GAP_RISCV_GCC_INSTALL_DIR} && \
-	./install.sh ${GAP_RISCV_GCC_INSTALL_DIR}
+${GAP_RISCV_GCC_INSTALL_DIR}:
+	mkdir -p ${GAP_RISCV_GCC_INSTALL_DIR} && cd ${GAP_RISCV_GCC_INSTALL_DIR} && \
+	curl -LO https://github.com/pulp-platform/gap-riscv-gnu-toolchain/releases/download/v0.0.1/gap9-gcc-ubuntu22.04-$(TARGET_GAP9).tar.gz && \
+	tar -xzf gap9-gcc-ubuntu22.04-$(TARGET_GAP9).tar.gz --strip-components=1 -C . && \
+	rm gap9-gcc-ubuntu22.04-$(TARGET_GAP9).tar.gz
 
 gap9-toolchain: ${GAP_RISCV_GCC_INSTALL_DIR}
 
-${TOOLCHAIN_DIR}/gap9-sdk:
-	cd ${TOOLCHAIN_DIR} && \
-	git clone git@iis-git.ee.ethz.ch:wiesep/gap9_sdk.git gap9-sdk && \
-	cd ${TOOLCHAIN_DIR}/gap9-sdk && git checkout ${GAP9_SDK_COMMIT_HASH} && \
-	git submodule update --init --recursive && \
-	git apply ${TOOLCHAIN_DIR}/gap9-sdk.patch
-
-${GAP9_SDK_INSTALL_DIR}: ${TOOLCHAIN_DIR}/gap9-sdk
-	mkdir -p ${GAP9_SDK_INSTALL_DIR}
-	cp -r ${TOOLCHAIN_DIR}/gap9-sdk ${GAP9_SDK_INSTALL_DIR}/../ && \
-	cd ${GAP9_SDK_INSTALL_DIR} && \
-	python -m venv .gap9-venv && \
-	. .gap9-venv/bin/activate && \
-	. configs/gap9_evk_audio.sh && \
-	make install_dependency cmake_sdk.build  && \
-	deactivate
-
-gap9-sdk: ${GAP9_SDK_INSTALL_DIR}
+.PHONY: gap9-sdk
+gap9-sdk:
+	@echo "Cloning and building GAP9 SDK..."
+	GAP9_SDK_INSTALL_DIR=${GAP9_SDK_INSTALL_DIR} \
+	GAP9_SDK_COMMIT_HASH=${GAP9_SDK_COMMIT_HASH} \
+	GAP_SDK_URL=${GAP_SDK_URL} \
+	ROOT_DIR=${ROOT_DIR} \
+	bash ${ROOT_DIR}/scripts/gap9-build_sdk.sh
 
 ${TOOLCHAIN_DIR}/snitch_cluster:
 	cd ${TOOLCHAIN_DIR} && \
@@ -549,18 +545,12 @@ ${QEMU_INSTALL_DIR}: ${TOOLCHAIN_DIR}/qemu
 
 qemu: ${QEMU_INSTALL_DIR}
 
-${TOOLCHAIN_DIR}/banshee:
-	cd ${TOOLCHAIN_DIR} && \
-	git clone https://github.com/pulp-platform/banshee.git && \
-	cd ${TOOLCHAIN_DIR}/banshee && git checkout ${BANSHEE_COMMIT_HASH} && \
-	git submodule update --init --recursive && \
-	git apply ${TOOLCHAIN_DIR}/banshee.patch
-
 ${BANSHEE_INSTALL_DIR}:
 	export LLVM_SYS_150_PREFIX=${LLVM_INSTALL_DIR} && \
 	mkdir -p ${BANSHEE_INSTALL_DIR} && cd ${BANSHEE_INSTALL_DIR} && \
-	curl -LO https://github.com/pulp-platform/banshee/releases/download/v0.5.0-prebuilt/banshee-0.5.0-$(TARGET).tar.gz && \
-	tar -xzf banshee-0.5.0-$(TARGET).tar.gz --strip-components=1 -C .
+	curl -LO https://github.com/pulp-platform/banshee/releases/download/v0.5.0-prebuilt/banshee-0.5.0-$(TARGET_BANSHEE).tar.gz && \
+	tar -xzf banshee-0.5.0-$(TARGET_BANSHEE).tar.gz --strip-components=1 -C . && \
+	rm banshee-0.5.0-$(TARGET_BANSHEE).tar.gz
 
 banshee: ${BANSHEE_INSTALL_DIR}
 
