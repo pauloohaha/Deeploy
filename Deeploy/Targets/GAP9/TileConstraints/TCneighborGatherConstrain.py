@@ -8,7 +8,7 @@ import numpy as np
 from ortools.constraint_solver.pywrapcp import IntVar
 
 from Deeploy.AbstractDataTypes import PointerClass
-from Deeploy.CommonExtensions.DataTypes import uint32_t, uint16_t
+from Deeploy.CommonExtensions.DataTypes import uint32_t, uint16_t, int32_t
 from Deeploy.DeeployTypes import NetworkContext, OperatorRepresentation
 from Deeploy.TilingExtension.MemoryConstraints import NodeMemoryConstraint
 from Deeploy.TilingExtension.TileConstraint import TileConstraint
@@ -64,21 +64,25 @@ class TCneighborGatherConstrain(TileConstraint):
         netDim1Var = tilerModel.getTensorDimVar(tensorName=inputNetBufferName, dimIdx=1)
         tilerModel.addConstraint(netDim1FullSize == netDim1Var)
 
+        # using v4s simd, only multiple of 4 supported
+        netDim2Var = tilerModel.getTensorDimVar(tensorName=inputNetBufferName, dimIdx=2)
+        tilerModel.addConstraint(netDim2Var % 4 == 0)
+
         return tilerModel
 
-    # @staticmethod
-    # def constructSymbolicNodeRep(tilerModel: TilerModel, parseDict: Dict,
-    #                              ctxt: NetworkContext) -> Dict[str, Union[int, IntVar]]:
+    @staticmethod
+    def constructSymbolicNodeRep(tilerModel: TilerModel, parseDict: Dict,
+                                 ctxt: NetworkContext) -> Dict[str, Union[int, IntVar]]:
 
-    #     inputBufferName = parseDict['data_in']
-    #     inputBuffer = ctxt.lookup(inputBufferName)
+        inputBufferName = parseDict['data_in_net']
+        inputBuffer = ctxt.lookup(inputBufferName)
 
-    #     lastDimIdx = len(inputBuffer.shape) - 1
+        lastDimIdx = len(inputBuffer.shape) - 1
 
-    #     symbolicParseDict = parseDict.copy()
-    #     symbolicParseDict['lastDimLength'] = tilerModel.getTensorDimVar(inputBuffer.name, lastDimIdx)
+        symbolicParseDict = parseDict.copy()
+        symbolicParseDict['dim'] = tilerModel.getTensorDimVar(inputBuffer.name, lastDimIdx)
 
-    #     return symbolicParseDict
+        return symbolicParseDict
 
     @classmethod
     def serializeTilingSolution(
@@ -91,13 +95,13 @@ class TCneighborGatherConstrain(TileConstraint):
         inputBaseOffsets, outputBaseOffsets = cls.extractBaseAddr(tilingSolution, targetMemLevel,
                                                                   operatorRepresentation, addrNames)
 
-        replacements = {}
+        replacements = {"dim":[]}
 
-        replacementTypes = {}
+        replacementTypes = {"dim": PointerClass(int32_t)}
 
-        # for cube in outputCubes:
-        #     newSize = np.prod(cube.dims)
-        #     replacements["size"].append(newSize)
+        for cube in outputCubes:
+            newSize = np.prod(cube.dims[-1])
+            replacements["dim"].append(newSize)
 
         inputLoadSchedule = []
         outputLoadSchedule = []

@@ -6,7 +6,7 @@ import math
 from typing import Tuple
 import numpy as np
 import onnx_graphsurgeon as gs
-
+from Deeploy.Targets.GAP9.Templates.DPVO_defines import MAX_PATCH_PER_FRAME, MAX_EDGE_PER_PATCH, DIM
 from Deeploy.DeeployTypes import NetworkContext, NodeParser
 
 class CustomColSoftmaxParser(NodeParser):
@@ -111,6 +111,7 @@ class TCneighborGatherParser(NodeParser):
 
         ret = all([len(node.inputs) == 2, len(node.outputs) == 1])
         self.operatorRepresentation['dir'] = node.attrs['dir']
+        self.operatorRepresentation['dim'] = DIM
         return ret
 
     def parseNodeCtxt(self,

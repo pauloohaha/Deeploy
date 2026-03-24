@@ -12,6 +12,7 @@ gather_arg.In       = (int8_t  *)${data_in_net};
 gather_arg.Out      = (int8_t  *)${data_out};
 gather_arg.kk_buff  = (int    *)${data_in_kk};
 gather_arg.dir      = ${dir};
+gather_arg.dim      = ${dim};
                                  
 TC_layout_neighbor_gather_int8(&gather_arg);
 """)

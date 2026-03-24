@@ -46,6 +46,7 @@ from Deeploy.Targets.PULPOpen.Layers import PULPRQSConvLayer, PULPRQSGEMMLayer
 from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser, PULPDWConv1DParser, \
     PULPDWConv2DParser, PULPFPConv2DParser, PULPFPDWConv2DParser, PULPGEMMParser, PULPMatrixVecParser, \
     PULPTallGEMMParser
+from Deeploy.Targets.PULPOpen.Platform import PULPOptimizer
 
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather, Instancenorm2d
