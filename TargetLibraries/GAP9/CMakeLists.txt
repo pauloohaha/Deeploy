@@ -61,6 +61,7 @@ target_compile_options(deeploygap9 PRIVATE
   -Wno-type-limits
   -Wno-attributes
   -Wno-incompatible-pointer-types
+  # -Og -g
   -O3
 )
 

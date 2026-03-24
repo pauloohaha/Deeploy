@@ -420,12 +420,15 @@ GAP9GatherBindings = [
 GAP9QuantBindings = [
     NodeBinding(QuantChecker([PointerClass(float32_t)], [PointerClass(int8_t)]), QuantTemplate.referenceTemplate,
                 GAP9Transformer),
+    NodeBinding(QuantChecker([PointerClass(float32_t)], [PointerClass(uint8_t)]), QuantTemplate.referenceTemplate,
+                GAP9Transformer),
 ]
 
 GAP9DequantBindings = [
     NodeBinding(DequantChecker([PointerClass(int8_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
                 GAP9Transformer),
-] + [
+    NodeBinding(DequantChecker([PointerClass(uint8_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
+                GAP9Transformer),
     NodeBinding(DequantChecker([PointerClass(int32_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
                 GAP9Transformer),
 ]
