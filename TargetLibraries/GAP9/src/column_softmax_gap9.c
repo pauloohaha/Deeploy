@@ -401,6 +401,10 @@ void ColSoftMax_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2
         if(iteration_id == total_iterations-1){
           /*wait for last DMA output*/
           pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+          if(total_iterations >= 2){
+            /* free the other output dma */
+            pi_cl_dma_cmd_wait(data_out_dma_handles[data_bin]);
+          }
         }
 #ifdef PERF_PROFILE
         pi_perf_stop();
@@ -534,6 +538,10 @@ void ColSum_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float *L2_out
         if(iteration_id == total_iterations-1){
           /*wait for last DMA output*/
           pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+          if(total_iterations >= 2){
+            /* free the other output dma */
+            pi_cl_dma_cmd_wait(data_out_dma_handles[data_bin]);
+          }
         }
 #ifdef PERF_PROFILE
         pi_perf_stop();
@@ -697,6 +705,10 @@ void ColScatter_master_kernel(float *L2_net_buffer, int *L2_KK_buffer, float* L2
         if(iteration_id == total_iterations-1){
           /*wait for last DMA output*/
           pi_cl_dma_cmd_wait(data_out_dma_handles[compute_bin]);
+          if(total_iterations >= 2){
+            /* free the other output dma */
+            pi_cl_dma_cmd_wait(data_out_dma_handles[data_bin]);
+          }
         }
 
 
