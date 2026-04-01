@@ -18,7 +18,9 @@ from Deeploy.Targets.GAP9.Bindings import GAP9AddBindings, GAP9ConcatBindings, G
     GAP9RQAddBindings, GAP9RQSBindings, GAP9RQSConv2DBindings, GAP9RQSDWConv2DBindings, GAP9RQSGEMMBindings, \
     GAP9RQSiHardswishBindings, GAP9RQSMatrixVecBindings, GAP9RQSTallGEMMBindings, GAP9SGDBindings, \
     GAP9SoftmaxBindings, GAP9SoftmaxCrossEntropyLossBindings, GAP9SoftmaxCrossEntropyLossGradBindings, \
-    GAP9SoftmaxGradBindings, GAP9TransposeBindings, GAP9UniformRQSBindings,  CustomColSoftmaxBindings, \
+    GAP9SoftmaxGradBindings, GAP9TransposeBindings, GAP9UniformRQSBindings, \
+    GAP9NE16RQSGEMMBindings, GAP9NE16GEMMInt32Bindings, \
+    CustomColSoftmaxBindings, \
     CustomColSumBindings, CustomColScatterBindings, CustomElementMulBindings, GAP9FloatDWConv2DBindings, \
     FloatSigmoidBindings, TCneighborGatherBindings, Instancenorm2dBindings
 
@@ -70,6 +72,12 @@ GAP9DWConv2DTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9Flo
 
 GAP9RQSGEMMTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9RQSGEMMBindings,
                                                          tileConstraint = GEMMTileConstraint())
+
+GAP9NE16RQSGEMMTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9NE16RQSGEMMBindings,
+                                                              tileConstraint = GEMMTileConstraint())
+
+GAP9NE16GEMMInt32TilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9NE16GEMMInt32Bindings,
+                                                                tileConstraint = FloatGEMMTileConstraint())
 
 GAP9FPGEMMTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9FloatGEMMBindings,
                                                         tileConstraint = FloatGEMMTileConstraint())

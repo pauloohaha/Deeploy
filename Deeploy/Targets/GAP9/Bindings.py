@@ -29,8 +29,8 @@ from Deeploy.Targets.PULPOpen.CodeTransformationPasses.PULPProfileUntiled import
 from Deeploy.Targets.PULPOpen.Bindings import TilingCallClosure, ForkClosure, \
     MemoryAwareFunctionCallClosure, L3MemoryAwareFunctionCallClosure, MemoryAwareForkTransformer, ForkTransformer
 from Deeploy.Targets.PULPOpen.DataTypes import PULPDMAFuture
-from Deeploy.Targets.GAP9.Templates import CustomColSoftmax, CustomColSum, CustomColScatter, CustomElementMul, FloatSigmoid, TCneighborGather, \
-      Instancenorm2dTemplate
+from Deeploy.Targets.GAP9.Templates import CustomColSoftmax, CustomColSum, CustomColScatter, CustomElementMul, \
+    FloatSigmoid, NE16GEMMTemplate, TCneighborGather, Instancenorm2dTemplate
 from Deeploy.Targets.GAP9.DMA.MchanDma import GAP9MchanDma
 from Deeploy.Targets.GAP9.DMA.L3Dma import GAP9L3Dma
 
@@ -213,6 +213,22 @@ GAP9RQSGEMM_8_Binding = [
                            PointerClass(int32_t),
                            PointerClass(int32_t)], [PointerClass(type2)]), GEMMTemplate.PULPGEMM_8_Template,
         GAP9Transformer) for type1, type2 in zip([int8_t, uint8_t, int8_t, uint8_t], [int8_t, uint8_t, uint8_t, int8_t])
+]
+
+GAP9NE16RQSGEMMBindings = [
+    NodeBinding(
+        PULPLinearChecker([PointerClass(type1),
+                           PointerClass(int8_t),
+                           PointerClass(int32_t),
+                           PointerClass(int32_t)], [PointerClass(type2)]), NE16GEMMTemplate.referenceTemplate,
+        GAP9Transformer) for type1 in [int8_t, uint8_t] for type2 in [int8_t, uint8_t]
+]
+
+GAP9NE16GEMMInt32Bindings = [
+    NodeBinding(
+        GEMMChecker([PointerClass(type1), PointerClass(int8_t),
+                     PointerClass(int32_t)], [PointerClass(int32_t)]), NE16GEMMTemplate.referenceTemplate,
+        GAP9Transformer) for type1 in [int8_t, uint8_t]
 ]
 
 GAP9FloatGEMMBindings = [

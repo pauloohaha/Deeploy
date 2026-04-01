@@ -18,7 +18,8 @@ from Deeploy.Targets.GAP9.Tiler import GAP9AddTilingReadyBindings, GAP9ConcatTil
     GAP9LayernormTilingReadyBindings, GAP9MatMulTilingReadyBindings, GAP9MaxPool2DTilingReadyBindings, \
     GAP9MulTilingReadyBindings, GAP9ReduceSumTilingReadyBindings, GAP9ReluTilingReadyBindings, \
     GAP9RQAddTilingReadyBindings, GAP9RQSConv2DTilingReadyBindings, GAP9RQSDWConv2DTilingReadyBindings, \
-    GAP9RQSGEMMTilingReadyBindings, GAP9RQSiHardswishTilingReadyBindings, GAP9RQSMatrixVecTilingReadyBindings, \
+    GAP9RQSGEMMTilingReadyBindings, GAP9NE16RQSGEMMTilingReadyBindings, GAP9NE16GEMMInt32TilingReadyBindings, \
+    GAP9RQSiHardswishTilingReadyBindings, GAP9RQSMatrixVecTilingReadyBindings, \
     GAP9RQSTallGEMMTilingReadyBindings, GAP9RQSTilingReadyBindings, GAP9SGDTilingReadyBindings, \
     GAP9SoftmaxCrossEntropyGradTilingReadyBindings, GAP9SoftmaxCrossEntropyTilingReadyBindings, \
     GAP9SoftmaxGradTilingReadyBindings, GAP9SoftmaxTilingReadyBindings, GAP9TransposeTilingReadyBindings, \
@@ -40,6 +41,7 @@ from Deeploy.Targets.Generic.Parsers import AddParser, ConcatParser, DequantPars
     SoftmaxCrossEntropyLossGradParser, SoftmaxCrossEntropyLossParser, SoftmaxGradParser, SoftmaxParser, \
     TransposeParser, UniformRequantShiftParser, UnsqueezeParser, iHardswishParser, iRMSNormParser, iSoftmaxParser
 from Deeploy.Targets.Generic.Templates import AllocateTemplate as BasicAllocateTemplate
+from Deeploy.Targets.Generic.TopologyOptimizationPasses.Passes import DequantQuantMergePass, MatMulAddMergePass
 from Deeploy.Targets.PULPOpen.Bindings import BasicDequantBindings, BasicQuantBindings, PULPDMASliceBindings, \
     PULPDWConv1DBinding, PULPReduceMeanBindings, PULPRQSConv1DBindings, PULPSliceBindings
 from Deeploy.Targets.PULPOpen.Layers import PULPRQSConvLayer, PULPRQSGEMMLayer
@@ -79,7 +81,9 @@ GAP9_Conv2DMapper = NodeMapper(PULPConv2DParser(), GAP9RQSConv2DTilingReadyBindi
 GAP9_FPDWConv2DMapper = NodeMapper(PULPFPDWConv2DParser(), GAP9DWConv2DTilingReadyBindings)
 GAP9_DWConv2DMapper = NodeMapper(PULPDWConv2DParser(), GAP9RQSDWConv2DTilingReadyBindings)
 GAP9_GEMMMapper = NodeMapper(PULPGEMMParser(), GAP9RQSGEMMTilingReadyBindings)
+GAP9_NE16GEMMMapper = NodeMapper(PULPGEMMParser(), GAP9NE16RQSGEMMTilingReadyBindings)
 GAP9_FloatGEMMMapper = NodeMapper(GEMMParser(), GAP9FPGEMMTilingReadyBindings)
+GAP9_NE16GEMMInt32Mapper = NodeMapper(GEMMParser(), GAP9NE16GEMMInt32TilingReadyBindings)
 GAP9_MatrixVecMapper = NodeMapper(PULPMatrixVecParser(), GAP9RQSMatrixVecTilingReadyBindings)
 GAP9_TallGEMMMapper = NodeMapper(PULPTallGEMMParser(), GAP9RQSTallGEMMTilingReadyBindings)
 GAP9_MaxPool2DMapper = NodeMapper(MaxPool2DParser(), GAP9MaxPool2DTilingReadyBindings)
@@ -111,9 +115,10 @@ TCneighborGatherMapper = NodeMapper(TCneighborGatherParser(), TCneighborGatherTi
 Instancenorm2dMapper = NodeMapper(InstanceNorm2DParser(), Instancenorm2dTilingReadyBindings)
 
 GAP9Optimizer = TopologyOptimizer([
-    *PULPOptimizer.passes[:12],
-    # MatMulAddMergePass(),
-    *PULPOptimizer.passes[12:],
+    *PULPOptimizer.passes[:2],
+    DequantQuantMergePass(),
+    MatMulAddMergePass(),
+    *PULPOptimizer.passes[2:],
 ], name = "GAP9Optimizer")
 
 # GAP9-specific mapping using ClDma
@@ -123,9 +128,9 @@ GAP9Mapping = {
     'RequantizedConv':
         PULPRQSConvLayer([GAP9_Conv2DMapper, GAP9_DWConv2DMapper, GAP9_Conv1DMapper, GAP9_DWConv1DMapper]),
     'RequantizedGemm':
-        PULPRQSGEMMLayer([GAP9_MatrixVecMapper, GAP9_TallGEMMMapper, GAP9_GEMMMapper]),
+        PULPRQSGEMMLayer([GAP9_NE16GEMMMapper, GAP9_MatrixVecMapper, GAP9_TallGEMMMapper, GAP9_GEMMMapper]),
     'Gemm':
-        GEMMLayer([GAP9_FloatGEMMMapper, GAP9_GEMMDequantMapper]),
+        GEMMLayer([GAP9_NE16GEMMInt32Mapper, GAP9_FloatGEMMMapper, GAP9_GEMMDequantMapper]),
     'Gelu':
         GELULayer([GAP9_GELUMapper]),
     'LayerNormalization':
@@ -280,7 +285,7 @@ class GAP9StructBuffer(StructBuffer):
     deallocTemplate = NodeTemplate("")
 
 
-_includeList = ["pmsis.h", "DeeployGAP9Math.h", "pulp_nn_kernels.h", "DeeployMchan.h", "CNN_BasicKernels_fp32.h", "tc_layout_neighbor.h"]
+_includeList = ["pmsis.h", "DeeployGAP9Math.h", "pulp_nn_kernels.h", "DeeployMchan.h", "CNN_BasicKernels_fp32.h", "CNN_BasicKernels_NE16.h", "tc_layout_neighbor.h"]
 
 
 class GAP9ClusterEngine(DeploymentEngine):
