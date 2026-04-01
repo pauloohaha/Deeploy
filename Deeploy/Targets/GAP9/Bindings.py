@@ -220,7 +220,8 @@ GAP9NE16RQSGEMMBindings = [
         PULPLinearChecker([PointerClass(type1),
                            PointerClass(uint8_t),
                            PointerClass(int32_t),
-                           PointerClass(int32_t)], [PointerClass(type2)]), NE16GEMMTemplate.referenceTemplate,
+                           PointerClass(uint8_t),
+                           PointerClass(uint8_t)], [PointerClass(type2)]), NE16GEMMTemplate.referenceTemplate,
         GAP9ClusterTransformer) for type1 in [int8_t, uint8_t] for type2 in [int8_t, uint8_t]
 ]
 

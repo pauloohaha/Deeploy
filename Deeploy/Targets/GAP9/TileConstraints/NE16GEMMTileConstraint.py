@@ -31,6 +31,10 @@ class NE16GEMMTileConstraint(TileConstraint):
         if hasMul:
             mulBuffer = ctxt.lookup(name = parseDict['mul'])
             bufferNames.append(mulBuffer.name)
+        hasScaleN = 'scale_n' in parseDict and isinstance(parseDict['scale_n'], str)
+        if hasScaleN:
+            scaleNBuffer = ctxt.lookup(name = parseDict['scale_n'])
+            bufferNames.append(scaleNBuffer.name)
 
         for bufferName in bufferNames:
             tilerModel.addTensorDimToModel(ctxt, bufferName)
@@ -58,6 +62,10 @@ class NE16GEMMTileConstraint(TileConstraint):
         if hasMul:
             mulDimVar = tilerModel.getTensorDimVar(tensorName = mulBuffer.name, dimIdx = 0)
             tilerModel.addConstraint(outputSecondDimVar == mulDimVar)
+
+        if hasScaleN:
+            scaleNDimVar = tilerModel.getTensorDimVar(tensorName = scaleNBuffer.name, dimIdx = 0)
+            tilerModel.addConstraint(outputSecondDimVar == scaleNDimVar)
 
         return tilerModel
 
@@ -94,9 +102,12 @@ class NE16GEMMTileConstraint(TileConstraint):
         outputCubes = [cube.rectangle for cube in absoluteOutputCubes]
 
         hasMul = 'mul' in operatorRepresentation and isinstance(operatorRepresentation['mul'], str)
+        hasScaleN = 'scale_n' in operatorRepresentation and isinstance(operatorRepresentation['scale_n'], str)
         addrNames = ['A', 'B', 'C', 'data_out']
         if hasMul:
             addrNames.insert(2, 'mul')
+        if hasScaleN:
+            addrNames.insert(-1, 'scale_n')
         inputBaseOffsets, outputBaseOffsets = cls.extractBaseAddr(tilingSolution, targetMemLevel,
                                                                   operatorRepresentation, addrNames)
         transA = operatorRepresentation['transA']
@@ -170,6 +181,8 @@ class NE16GEMMTileConstraint(TileConstraint):
             load = {"A": a, "B": b, "C": c}
             if hasMul:
                 load["mul"] = inputMulCubes[idx]
+            if hasScaleN:
+                load["scale_n"] = inputMulCubes[idx]  # same per-channel slice as mul/C
             inputLoadSchedule.append(load)
 
         for out in outputCubes:

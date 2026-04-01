@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 from functools import partial
 
 import numpy as np
@@ -32,6 +33,39 @@ def _ne16_conv_1x1_weight_layout(W, w_bits=8):
     space = np.logspace(0, 7, num=8, base=2, dtype=np.int32).reshape((8, 1))
     w_layout = np.sum(w_binary * space, axis=2, dtype=np.uint8)
     return w_layout.reshape((Ko_, nb_ki, w_bits, tp_in // 8))
+
+
+def _compute_ne16_scale_shift(mul_values, log2D):
+    """Convert Deeploy's mul/log2D to NE16's per-channel scale/scale_n."""
+    Ko = len(mul_values)
+    ne16_scale = np.zeros(Ko, dtype=np.uint8)
+    ne16_scale_n = np.zeros(Ko, dtype=np.uint8)
+    for ko in range(Ko):
+        sf = float(mul_values[ko]) / float(2 ** log2D)
+        if sf >= 1.0:
+            sn = 0
+            sc = min(255, max(1, int(round(sf))))
+        elif sf > 0:
+            sn = min(31, max(0, int(math.floor(math.log2(127.0 / sf)))))
+            sc = min(255, max(1, int(round(sf * (1 << sn)))))
+        else:
+            sn = 0
+            sc = 0
+        ne16_scale[ko] = sc
+        ne16_scale_n[ko] = sn
+    return ne16_scale, ne16_scale_n
+
+
+def _is_input_signed(node, graph):
+    """Check if the data input to this GEMM node is signed by tracing the ONNX graph."""
+    input_tensor = node.inputs[0]
+    for n in graph.nodes:
+        if input_tensor in n.outputs:
+            if n.op == 'Quant' and 'signed' in n.attrs:
+                return bool(n.attrs['signed'] == 1)
+            elif  n.op == "RequantizedGemm" and 'signed' in n.attrs:
+                return bool(n.attrs['signed'].values == 1)
+    return True  # default to signed
 
 
 def _ne16_adjust_gemm_weight_layout_fun(graph: gs.Graph, match: Match, name: str):
@@ -82,11 +116,66 @@ def _ne16_adjust_gemm_weight_layout_fun(graph: gs.Graph, match: Match, name: str
 
     # Pack weights into NE16 bitplane format — create NEW tensor to avoid breaking other nodes
     # Flatten to 2D [Ko, Ki] to stay compatible with GEMMLayer.computeShapes and tiling
-    # (Nb_KI * Qw * 2 == Ki when Ki % 16 == 0, so DMA offsets are correct)
     ne16_weights = _ne16_conv_1x1_weight_layout(w_int8)
     ne16_weights_2d = ne16_weights.reshape(Ko, -1)
     packedWeightTensor = gs.Constant(f"{name}_{weightTensor.name}", ne16_weights_2d)
     node.inputs[1] = packedWeightTensor
+
+    # For RequantizedGemm: transform mul → ne16_scale, create scale_n, pre-multiply bias
+    # All sign-independent — signed input compensation done at runtime in the template
+    if node.op == 'RequantizedGemm' and len(node.inputs) >= 4:
+        mulTensor = node.inputs[3]
+        biasTensor = node.inputs[2]
+
+        if isinstance(mulTensor, gs.Constant) and isinstance(biasTensor, gs.Constant):
+            mul_values = mulTensor.values.flatten().astype(np.int32)
+            log2D = int(np.log2(node.attrs['div'].values))
+
+            # Broadcast scalar mul to per-channel if needed
+            if len(mul_values) == 1:
+                mul_values = np.full(Ko, mul_values[0], dtype=np.int32)
+
+            ne16_scale, ne16_scale_n = _compute_ne16_scale_shift(mul_values, log2D)
+
+            # Rescale bias from mul/log2D domain to scale/scale_n domain
+            # bias_merged is already *= mul from PULPGEMMRequantMergePass
+            # NE16 needs: bias_ne16 = bias_merged * 2^(scale_n - log2D)
+            bias_values = biasTensor.values.flatten().astype(np.int64)
+            ne16_bias = np.zeros(Ko, dtype=np.int64)
+            for ko in range(Ko):
+                shift_diff = int(ne16_scale_n[ko]) - log2D
+                if shift_diff >= 0:
+                    ne16_bias[ko] = bias_values[ko] << shift_diff
+                else:
+                    ne16_bias[ko] = bias_values[ko] >> (-shift_diff)
+
+            # Signed input compensation: subtract 128 * w_sum * scale from bias
+            input_signed = _is_input_signed(node, graph)
+            if input_signed:
+                for ko in range(Ko):
+                    ne16_bias[ko] -= 128 * int(w_sum[ko]) * int(ne16_scale[ko])
+
+            ne16_bias = ne16_bias.astype(np.int32)
+
+            # Overwrite mul tensor with ne16_scale
+            mulTensor.values = ne16_scale
+
+            # Overwrite bias tensor
+            biasTensor.values = ne16_bias
+
+            # Append scale_n as new input[4]
+            scale_n_tensor = gs.Constant(f"{name}_scale_n", ne16_scale_n)
+            node.inputs.append(scale_n_tensor)
+
+    elif node.op == 'Gemm' and len(node.inputs) >= 3:
+        # Plain Gemm (int32 output): bias compensation for signed input (no scale)
+        biasTensor = node.inputs[2]
+        if isinstance(biasTensor, gs.Constant):
+            input_signed = _is_input_signed(node, graph)
+            if input_signed:
+                bias_values = biasTensor.values.flatten().astype(np.int64)
+                bias_values = bias_values - 128 * w_sum
+                biasTensor.values = bias_values.astype(np.int32)
 
     return graph
 

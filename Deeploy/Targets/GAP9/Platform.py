@@ -53,8 +53,8 @@ from Deeploy.Targets.PULPOpen.Platform import PULPOptimizer
 
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather, Instancenorm2d
-from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, FloatSigmoidParser, \
-    TCneighborGatherParser, InstanceNorm2DParser
+from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, \
+    FloatSigmoidParser, NE16GEMMParser, TCneighborGatherParser, InstanceNorm2DParser
 
 # Create GAP9-specific NodeMappers
 GAP9_RQAddMapper = NodeMapper(RQAddParser(), GAP9RQAddTilingReadyBindings)
@@ -82,7 +82,7 @@ GAP9_Conv2DMapper = NodeMapper(PULPConv2DParser(), GAP9RQSConv2DTilingReadyBindi
 GAP9_FPDWConv2DMapper = NodeMapper(PULPFPDWConv2DParser(), GAP9DWConv2DTilingReadyBindings)
 GAP9_DWConv2DMapper = NodeMapper(PULPDWConv2DParser(), GAP9RQSDWConv2DTilingReadyBindings)
 GAP9_GEMMMapper = NodeMapper(PULPGEMMParser(), GAP9RQSGEMMTilingReadyBindings)
-GAP9_NE16GEMMMapper = NodeMapper(PULPGEMMParser(), GAP9NE16RQSGEMMTilingReadyBindings)
+GAP9_NE16GEMMMapper = NodeMapper(NE16GEMMParser(), GAP9NE16RQSGEMMTilingReadyBindings)
 GAP9_FloatGEMMMapper = NodeMapper(GEMMParser(), GAP9FPGEMMTilingReadyBindings)
 GAP9_NE16GEMMInt32Mapper = NodeMapper(GEMMParser(), GAP9NE16GEMMInt32TilingReadyBindings)
 GAP9_MatrixVecMapper = NodeMapper(PULPMatrixVecParser(), GAP9RQSMatrixVecTilingReadyBindings)
