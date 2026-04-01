@@ -37,13 +37,14 @@ referenceTemplate = NE16GEMMTemplate("""
 // NE16 Linear 8-bit (Name: ${nodeName}, Op: ${nodeOp})
 
 % if input_signed:
-// Signed input: add 128 offset to convert int8 -> uint8
+// Signed input: add 128 offset to convert int8 -> uint8 (multi-core SIMD)
 {
-    uint8_t *_ne16_in = (uint8_t *)${A};
-    int _ne16_size = ${batch} * ${M} * ${N};
-    for (int _i = 0; _i < _ne16_size; _i++) {
-        _ne16_in[_i] = (uint8_t)((int32_t)((int8_t *)${A})[_i] + 128);
-    }
+    ne16_int8_to_uint8_T _offset_arg = {
+        .In = (int8_t *)${A},
+        .Out = (uint8_t *)${A},
+        .size = ${batch} * ${M} * ${N}
+    };
+    pi_cl_team_fork(NUM_CORES, (void *)ne16_int8_to_uint8, &_offset_arg);
 }
 % endif
 
@@ -111,13 +112,14 @@ int32OutputTemplate = NE16GEMMTemplate("""
 // NE16 Linear Int32 (Name: ${nodeName}, Op: ${nodeOp})
 
 % if input_signed:
-// Signed input: add 128 offset to convert int8 -> uint8
+// Signed input: add 128 offset to convert int8 -> uint8 (multi-core SIMD)
 {
-    uint8_t *_ne16_in = (uint8_t *)${A};
-    int _ne16_size = ${batch} * ${M} * ${N};
-    for (int _i = 0; _i < _ne16_size; _i++) {
-        _ne16_in[_i] = (uint8_t)((int32_t)((int8_t *)${A})[_i] + 128);
-    }
+    ne16_int8_to_uint8_T _offset_arg = {
+        .In = (int8_t *)${A},
+        .Out = (uint8_t *)${A},
+        .size = ${batch} * ${M} * ${N}
+    };
+    pi_cl_team_fork(NUM_CORES, (void *)ne16_int8_to_uint8, &_offset_arg);
 }
 % endif
 

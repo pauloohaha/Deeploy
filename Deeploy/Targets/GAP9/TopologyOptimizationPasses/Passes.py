@@ -96,18 +96,18 @@ def _ne16_adjust_gemm_weight_layout_fun(graph: gs.Graph, match: Match, name: str
     # Determine actual Ko, Ki based on transB
     transB = node.attrs.get('transB', 0)
     if transB:
-        # transB=1: weight is [Ko, Ki] already
         Ko, Ki = values.shape
     else:
-        # transB=0: weight is [Ki, Ko], need to transpose for NE16 packing
         Ki, Ko = values.shape
-        values = values.T  # now [Ko, Ki]
-        # Update transB since we transposed the weights
-        node.attrs['transB'] = 1
 
-    # Skip if Ki isn't NE16-compatible
+    # Check NE16 compatibility BEFORE modifying the node
     if Ki % 16 != 0:
         return graph
+
+    # Safe to transpose — node will be fully processed
+    if not transB:
+        values = values.T  # local copy, now [Ko, Ki]
+        node.attrs['transB'] = 1
 
     # Compute per-channel weight sum BEFORE packing (needed for signed input bias compensation)
     w_int8 = values.astype(np.int8)
