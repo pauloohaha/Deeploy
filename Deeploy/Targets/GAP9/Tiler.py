@@ -41,6 +41,7 @@ from Deeploy.Targets.PULPOpen.TileConstraints.DWConvTileConstraint import DWConv
     RQDWConv2DTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.GatherTileConstraint import GatherTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.GEMMTileConstraint import FloatGEMMTileConstraint, GEMMTileConstraint
+from Deeploy.Targets.GAP9.TileConstraints.NE16GEMMTileConstraint import NE16GEMMTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.iSoftmaxTileConstraint import iSoftmaxTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.LayernormTileConstraint import LayernormTileConstraint
 from Deeploy.Targets.PULPOpen.TileConstraints.MatMulTileConstraint import MatMulTileConstraint
@@ -74,10 +75,10 @@ GAP9RQSGEMMTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9RQSG
                                                          tileConstraint = GEMMTileConstraint())
 
 GAP9NE16RQSGEMMTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9NE16RQSGEMMBindings,
-                                                              tileConstraint = GEMMTileConstraint())
+                                                              tileConstraint = NE16GEMMTileConstraint())
 
 GAP9NE16GEMMInt32TilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9NE16GEMMInt32Bindings,
-                                                                tileConstraint = FloatGEMMTileConstraint())
+                                                                tileConstraint = NE16GEMMTileConstraint())
 
 GAP9FPGEMMTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9FloatGEMMBindings,
                                                         tileConstraint = FloatGEMMTileConstraint())

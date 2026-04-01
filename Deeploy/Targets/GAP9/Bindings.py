@@ -218,17 +218,17 @@ GAP9RQSGEMM_8_Binding = [
 GAP9NE16RQSGEMMBindings = [
     NodeBinding(
         PULPLinearChecker([PointerClass(type1),
-                           PointerClass(int8_t),
+                           PointerClass(uint8_t),
                            PointerClass(int32_t),
                            PointerClass(int32_t)], [PointerClass(type2)]), NE16GEMMTemplate.referenceTemplate,
-        GAP9Transformer) for type1 in [int8_t, uint8_t] for type2 in [int8_t, uint8_t]
+        GAP9ClusterTransformer) for type1 in [int8_t, uint8_t] for type2 in [int8_t, uint8_t]
 ]
 
 GAP9NE16GEMMInt32Bindings = [
     NodeBinding(
-        GEMMChecker([PointerClass(type1), PointerClass(int8_t),
-                     PointerClass(int32_t)], [PointerClass(int32_t)]), NE16GEMMTemplate.referenceTemplate,
-        GAP9Transformer) for type1 in [int8_t, uint8_t]
+        GEMMChecker([PointerClass(type1), PointerClass(uint8_t),
+                     PointerClass(int32_t)], [PointerClass(int32_t)]), NE16GEMMTemplate.int32OutputTemplate,
+        GAP9ClusterTransformer) for type1 in [int8_t, uint8_t]
 ]
 
 GAP9FloatGEMMBindings = [

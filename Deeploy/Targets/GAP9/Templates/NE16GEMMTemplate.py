@@ -12,29 +12,6 @@ from Deeploy.CommonExtensions.DataTypes import uint8_t
 from Deeploy.DeeployTypes import ConstantBuffer, NetworkContext, NodeTemplate, OperatorRepresentation
 
 
-def _ne16_conv_1x1_weight_layout(W, w_bits=8):
-    """Pack int8 weights for NE16 1x1 conv mode.
-    W: int8 [Ko, Ki] -> uint8 [Ko, Nb_KI, Qw, 2] (bitplane packed)
-    Weights stored as uint8 = int8 + 128.
-    """
-    tp_in = 16
-    Ko_, Ki_ = W.shape
-    W_uint8 = (W.astype(np.int32) + 128).astype(np.uint8)
-    nb_ki = (Ki_ + tp_in - 1) // tp_in
-    w_binary = np.zeros((Ko_ * nb_ki, w_bits, 8, tp_in // 8), dtype=np.uint8)
-    for ko in range(Ko_):
-        for ki_maj in range(nb_ki):
-            for ki_min in range(tp_in):
-                idx = ko * nb_ki + ki_maj
-                ki = ki_maj * tp_in + ki_min
-                val = int(W_uint8[ko, ki]) if ki < Ki_ else 0
-                for q in range(w_bits):
-                    w_binary[idx, q, ki_min % 8, ki_min // 8] = (val >> q) & 1
-    space = np.logspace(0, 7, num=8, base=2, dtype=np.int32).reshape((8, 1))
-    w_layout = np.sum(w_binary * space, axis=2, dtype=np.uint8)
-    return w_layout.reshape((Ko_, nb_ki, w_bits, tp_in // 8))
-
-
 def _compute_ne16_scale_shift(mul_values, log2D):
     """Convert Deeploy's mul/log2D to NE16's per-channel scale/scale_n.
     scale_factor = mul[ko] / 2^log2D
@@ -116,16 +93,7 @@ class NE16GEMMTemplate(NodeTemplate):
         output_bits = data_out._type.referencedType.typeWidth
         output_signed = data_out._type.referencedType.typeMin < 0
 
-        weight_buf = ctxt.lookup(operatorRepresentation['B'])
-        assert isinstance(weight_buf, ConstantBuffer), "NE16 GEMM requires constant weights"
-
-        w_int8 = weight_buf.values.astype(np.int8)
         Ko = int(operatorRepresentation['O'])
-        Ki = int(operatorRepresentation['N'])
-
-        # Pack weights in NE16 bitplane format
-        ne16_weights = _ne16_conv_1x1_weight_layout(w_int8.reshape(Ko, Ki))
-        weight_buf.values = ne16_weights.flatten()
 
         add_buf = ctxt.lookup(operatorRepresentation['C'])
         assert isinstance(add_buf, ConstantBuffer), "NE16 GEMM requires constant add/bias"
@@ -136,15 +104,18 @@ class NE16GEMMTemplate(NodeTemplate):
         else:
             add_values = raw_add
 
-        # Signed input bias compensation
-        if input_signed:
-            w_sum = w_int8.reshape(Ko, Ki).astype(np.int64).sum(axis=1)
+        # Signed input bias compensation using pre-computed weight sum from topology pass
+        if input_signed and 'ne16_weight_sum' in operatorRepresentation:
+            w_sum = operatorRepresentation['ne16_weight_sum']
+            if isinstance(w_sum, str):
+                w_sum_buf = ctxt.lookup(w_sum)
+                w_sum = w_sum_buf.values.flatten().astype(np.int64)
+            else:
+                w_sum = np.array(w_sum).flatten().astype(np.int64)
             add_values = add_values - 128 * w_sum
 
         if output_bits == 32:
-            # Int32 output: scale=1, scale_n=0, bias unchanged (no requant)
-            ne16_scale = np.ones(Ko, dtype=np.uint8)
-            ne16_scale_n = np.zeros(Ko, dtype=np.uint8)
+            # Int32 output: no requant, bias unchanged
             ne16_bias = add_values.astype(np.int32)
         else:
             # 8-bit output: compute scale/scale_n from mul/log2D
@@ -159,23 +130,17 @@ class NE16GEMMTemplate(NodeTemplate):
             # Update mul buffer with NE16 scale
             mul_buf.values = ne16_scale
 
+            # Store scale_n as a new constant buffer
+            scale_n_name = operatorRepresentation['nodeName'] + "_scale_n"
+            scale_n_buf = ctxt.ConstantBuffer(scale_n_name, [Ko], ne16_scale_n)
+            scale_n_buf._type = PointerClass(uint8_t)
+            ctxt.add(scale_n_buf, 'global')
+            operatorRepresentation['scale_n'] = scale_n_name
+
         # Update bias buffer
         add_buf.values = ne16_bias
 
-        # Store scale_n as a new constant buffer
-        scale_n_name = operatorRepresentation['nodeName'] + "_scale_n"
-        scale_n_buf = ctxt.ConstantBuffer(scale_n_name, [Ko], ne16_scale_n)
-        scale_n_buf._type = PointerClass(uint8_t)
-        ctxt.add(scale_n_buf, 'global')
-        operatorRepresentation['scale_n'] = scale_n_name
-
-        if output_bits == 32:
-            # For int32 output, create scale buffer and map to template vars
-            scale_name = operatorRepresentation['nodeName'] + "_ne16_scale"
-            scale_buf = ctxt.ConstantBuffer(scale_name, [Ko], ne16_scale)
-            scale_buf._type = PointerClass(uint8_t)
-            ctxt.add(scale_buf, 'global')
-            operatorRepresentation['mul'] = scale_name
+        operatorRepresentation['output_bits'] = output_bits
 
         # NE16 config
         operatorRepresentation['ne16_cfg'] = _build_ne16_cfg(signed_output=output_signed, output_bits=output_bits)
@@ -183,20 +148,7 @@ class NE16GEMMTemplate(NodeTemplate):
         return ctxt, operatorRepresentation, []
 
 
-referenceTemplate = NE16GEMMTemplate("""
-// NE16 Linear (Name: ${nodeName}, Op: ${nodeOp})
-
-% if input_signed:
-// Signed input: add 128 offset to convert int8 -> uint8
-{
-    uint8_t *_ne16_in = (uint8_t *)${A};
-    int _ne16_size = ${batch} * ${M} * ${N};
-    for (int _i = 0; _i < _ne16_size; _i++) {
-        _ne16_in[_i] = (uint8_t)((int32_t)((int8_t *)${A})[_i] + 128);
-    }
-}
-% endif
-
+_NE16_KERNEL_BODY = """
 NE16_Enable();
 NE16_SoftReset();
 
@@ -206,8 +158,8 @@ NE16_SoftReset();
         .Filter               = (unsigned short *)${B},
         .Bias                 = (int *)${C},
         .Out                  = (void *)${data_out},
-        .Scale                = (unsigned char *)${mul},
-        .ScaleN               = (unsigned char *)${scale_n},
+        .Scale                = ${_scale_ptr},
+        .ScaleN               = ${_scalen_ptr},
         .Tile_InFeat          = ${N},
         .TotalInFeatures      = ${N},
         .Tile_InH             = 1,
@@ -238,4 +190,47 @@ NE16_SoftReset();
 }
 
 NE16_Disable();
+"""
+
+_NE16_SIGNED_INPUT_PREAMBLE = """
+% if input_signed:
+// Signed input: add 128 offset to convert int8 -> uint8
+{
+    uint8_t *_ne16_in = (uint8_t *)${A};
+    int _ne16_size = ${batch} * ${M} * ${N};
+    for (int _i = 0; _i < _ne16_size; _i++) {
+        _ne16_in[_i] = (uint8_t)((int32_t)((int8_t *)${A})[_i] + 128);
+    }
+}
+% endif
+"""
+
+# 8-bit output template (RequantizedGemm) — uses tiled mul/scale_n
+referenceTemplate = NE16GEMMTemplate("""
+// NE16 Linear 8-bit (Name: ${nodeName}, Op: ${nodeOp})
+""" + _NE16_SIGNED_INPUT_PREAMBLE + """
+<%
+_scale_ptr = "(unsigned char *)" + str(mul)
+_scalen_ptr = "(unsigned char *)" + str(scale_n)
+%>
+""" + _NE16_KERNEL_BODY)
+
+# Int32 output template (plain Gemm) — hardcoded scale=1, scale_n=0
+int32OutputTemplate = NE16GEMMTemplate("""
+// NE16 Linear Int32 (Name: ${nodeName}, Op: ${nodeOp})
+""" + _NE16_SIGNED_INPUT_PREAMBLE + """
+{
+    static unsigned char _ne16_ones[${O}];
+    static unsigned char _ne16_zeros[${O}];
+    static int _ne16_inited = 0;
+    if (!_ne16_inited) {
+        for (int _i = 0; _i < ${O}; _i++) { _ne16_ones[_i] = 1; _ne16_zeros[_i] = 0; }
+        _ne16_inited = 1;
+    }
+<%
+_scale_ptr = "_ne16_ones"
+_scalen_ptr = "_ne16_zeros"
+%>
+""" + _NE16_KERNEL_BODY + """
+}
 """)

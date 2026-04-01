@@ -42,6 +42,7 @@ from Deeploy.Targets.Generic.Parsers import AddParser, ConcatParser, DequantPars
     TransposeParser, UniformRequantShiftParser, UnsqueezeParser, iHardswishParser, iRMSNormParser, iSoftmaxParser
 from Deeploy.Targets.Generic.Templates import AllocateTemplate as BasicAllocateTemplate
 from Deeploy.Targets.Generic.TopologyOptimizationPasses.Passes import DequantQuantMergePass, MatMulAddMergePass
+from Deeploy.Targets.GAP9.TopologyOptimizationPasses.Passes import NE16AdjustGEMMWeightLayoutPass
 from Deeploy.Targets.PULPOpen.Bindings import BasicDequantBindings, BasicQuantBindings, PULPDMASliceBindings, \
     PULPDWConv1DBinding, PULPReduceMeanBindings, PULPRQSConv1DBindings, PULPSliceBindings
 from Deeploy.Targets.PULPOpen.Layers import PULPRQSConvLayer, PULPRQSGEMMLayer
@@ -119,6 +120,7 @@ GAP9Optimizer = TopologyOptimizer([
     DequantQuantMergePass(),
     MatMulAddMergePass(),
     *PULPOptimizer.passes[2:],
+    NE16AdjustGEMMWeightLayoutPass(),
 ], name = "GAP9Optimizer")
 
 # GAP9-specific mapping using ClDma
