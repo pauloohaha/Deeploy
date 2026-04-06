@@ -56,23 +56,12 @@ def _compute_ne16_scale_shift(mul_values, log2D):
     return ne16_scale, ne16_scale_n
 
 
-def _is_input_signed(node, graph):
-    """Check if the data input to this GEMM node is signed by tracing the ONNX graph."""
-    input_tensor = node.inputs[0]
-    for n in graph.nodes:
-        if input_tensor in n.outputs:
-            if n.op == 'Quant' and 'signed' in n.attrs:
-                return bool(n.attrs['signed'] == 1)
-            elif  n.op == "RequantizedGemm" and 'signed' in n.attrs:
-                return bool(n.attrs['signed'].values == 1)
-    return True  # default to signed
-
-
 def _ne16_adjust_gemm_weight_layout_fun(graph: gs.Graph, match: Match, name: str):
-    """Reformat GEMM weights into NE16 1x1 conv bitplane layout.
+    """Prepare GEMM node for NE16 execution.
 
-    Converts weight tensor from [Ko, Ki] int8 to [Ko, Nb_KI, Qw, 2] uint8 bitplane packed.
-    This must run BEFORE tiling so the tiling system sees the packed shape.
+    Handles transB normalization, scale/scale_n computation, and bias rescaling.
+    Weight bitplane packing and signed bias compensation are deferred to alignToContext
+    where input signedness is known from the type system.
     """
     matched_nodes = list(match.nodes_map.values())
     node = matched_nodes[0]
@@ -104,25 +93,14 @@ def _ne16_adjust_gemm_weight_layout_fun(graph: gs.Graph, match: Match, name: str
     if Ki % 16 != 0:
         return graph
 
-    # Safe to transpose — node will be fully processed
+    # Transpose weight to [Ko, Ki] if needed — keep as int8
     if not transB:
-        values = values.T  # local copy, now [Ko, Ki]
+        transposed = values.T.astype(np.int8)
+        newWeightTensor = gs.Constant(f"{name}_{weightTensor.name}", transposed)
+        node.inputs[1] = newWeightTensor
         node.attrs['transB'] = 1
 
-    # Compute per-channel weight sum BEFORE packing (needed for signed input bias compensation)
-    w_int8 = values.astype(np.int8)
-    w_sum = w_int8.astype(np.int64).sum(axis=1)  # [Ko]
-    node.attrs["ne16_weight_sum"] = gs.Constant(f"{name}_weight_sum", w_sum.astype(np.int32))
-
-    # Pack weights into NE16 bitplane format — create NEW tensor to avoid breaking other nodes
-    # Flatten to 2D [Ko, Ki] to stay compatible with GEMMLayer.computeShapes and tiling
-    ne16_weights = _ne16_conv_1x1_weight_layout(w_int8)
-    ne16_weights_2d = ne16_weights.reshape(Ko, -1)
-    packedWeightTensor = gs.Constant(f"{name}_{weightTensor.name}", ne16_weights_2d)
-    node.inputs[1] = packedWeightTensor
-
-    # For RequantizedGemm: transform mul → ne16_scale, create scale_n, pre-multiply bias
-    # All sign-independent — signed input compensation done at runtime in the template
+    # For RequantizedGemm: transform mul → ne16_scale, create scale_n, rescale bias
     if node.op == 'RequantizedGemm' and len(node.inputs) >= 4:
         mulTensor = node.inputs[3]
         biasTensor = node.inputs[2]
@@ -149,12 +127,6 @@ def _ne16_adjust_gemm_weight_layout_fun(graph: gs.Graph, match: Match, name: str
                 else:
                     ne16_bias[ko] = bias_values[ko] >> (-shift_diff)
 
-            # Signed input compensation: subtract 128 * w_sum * scale from bias
-            input_signed = _is_input_signed(node, graph)
-            if input_signed:
-                for ko in range(Ko):
-                    ne16_bias[ko] -= 128 * int(w_sum[ko]) * int(ne16_scale[ko])
-
             ne16_bias = ne16_bias.astype(np.int32)
 
             # Overwrite mul tensor with ne16_scale
@@ -166,16 +138,6 @@ def _ne16_adjust_gemm_weight_layout_fun(graph: gs.Graph, match: Match, name: str
             # Append scale_n as new input[4]
             scale_n_tensor = gs.Constant(f"{name}_scale_n", ne16_scale_n)
             node.inputs.append(scale_n_tensor)
-
-    elif node.op == 'Gemm' and len(node.inputs) >= 3:
-        # Plain Gemm (int32 output): bias compensation for signed input (no scale)
-        biasTensor = node.inputs[2]
-        if isinstance(biasTensor, gs.Constant):
-            input_signed = _is_input_signed(node, graph)
-            if input_signed:
-                bias_values = biasTensor.values.flatten().astype(np.int64)
-                bias_values = bias_values - 128 * w_sum
-                biasTensor.values = bias_values.astype(np.int32)
 
     return graph
 

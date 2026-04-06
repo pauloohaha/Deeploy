@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from Deeploy.DeeployTypes import NetworkContext, NodeTemplate, OperatorRepresentation
+from Deeploy.Targets.GAP9.TopologyOptimizationPasses.Passes import _ne16_conv_1x1_weight_layout
 
 
 class NE16GEMMTemplate(NodeTemplate):
@@ -18,8 +19,11 @@ class NE16GEMMTemplate(NodeTemplate):
                        operatorRepresentation: OperatorRepresentation) -> Tuple[NetworkContext, Dict, List[str]]:
 
         A = ctxt.lookup(operatorRepresentation['A'])
+        B = ctxt.lookup(operatorRepresentation['B'])
+        C = ctxt.lookup(operatorRepresentation['C'])
         data_out = ctxt.lookup(operatorRepresentation['data_out'])
 
+        # Determine signedness from type system (reliable, post-type-inference)
         input_signed = A._type.referencedType.typeMin < 0
         output_bits = data_out._type.referencedType.typeWidth
         output_signed = data_out._type.referencedType.typeMin < 0
@@ -28,6 +32,35 @@ class NE16GEMMTemplate(NodeTemplate):
         operatorRepresentation['output_bits'] = output_bits
         operatorRepresentation['quant_bits'] = 2 if output_bits == 32 else 0
         operatorRepresentation['quant_norect'] = 1 if (output_bits == 32 or output_signed) else 0
+
+        # Weight packing and signed bias compensation
+        w_int8 = B.values.astype(np.int8)  # [Ko, Ki], still int8 at this point
+        Ko, Ki = w_int8.shape
+
+        # Compute w_sum BEFORE packing (needed for signed bias compensation)
+        w_sum = w_int8.astype(np.int64).sum(axis=1)  # [Ko]
+
+        # Truncate broadcast bias [M, O] → per-channel [Ko] for NE16
+        bias_flat = C.values.flatten()
+        if bias_flat.size > Ko:
+            C.values = bias_flat[:Ko].copy()
+
+        # Signed input bias compensation
+        if input_signed:
+            bias_values = C.values.flatten().astype(np.int64)
+            if 'mul' in operatorRepresentation:
+                # RequantizedGemm: bias -= 128 * w_sum * scale
+                scale_buf = ctxt.lookup(operatorRepresentation['mul'])
+                scale_values = scale_buf.values.flatten().astype(np.int64)
+                bias_values -= 128 * w_sum * scale_values
+            else:
+                # Gemm int32: bias -= 128 * w_sum (no scale)
+                bias_values -= 128 * w_sum
+            C.values = bias_values.astype(np.int32)
+
+        # Pack weights to NE16 bitplane format
+        ne16_weights = _ne16_conv_1x1_weight_layout(w_int8)
+        B.values = ne16_weights.reshape(Ko, -1)
 
         return ctxt, operatorRepresentation, []
 
