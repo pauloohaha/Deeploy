@@ -85,6 +85,7 @@ def generateTestOutputsHeader(deployer: NetworkDeployer, test_outputs: List[np.n
 
         retStr += f"#define OUTPUTTYPE {typeName}\n"
         retStr += f"#define ISOUTPUTFLOAT {int(typeName == 'float32_t')}\n"
+        retStr += f"#define ISOUTPUTFLOAT16 {int(typeName == 'float16_t')}\n"
         retStr += f"{typeName} testOutputVector{index}[] ="
         retStr += "{"
 
@@ -213,6 +214,9 @@ def generateL3HexDump(deployer: NetworkDeployer, path: str, test_inputs: List, t
         if dataType.referencedType.typeName == "float32_t":
             retStr = "float32"
             width = 32
+        elif dataType.referencedType.typeName == "float16_t":
+            retStr = "float16"
+            width = 16
         else:
             width = dataType.referencedType.typeWidth
             signed = (dataType.referencedType.typeMin < 0)

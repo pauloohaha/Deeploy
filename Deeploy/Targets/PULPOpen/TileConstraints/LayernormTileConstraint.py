@@ -19,6 +19,11 @@ from Deeploy.TilingExtension.TilingCodegen import AbsoluteHyperRectangle, HyperR
 class LayernormTileConstraint(TileConstraint):
 
     @staticmethod
+    def constructSymbolicNodeRep(tilerModel: TilerModel, parseDict: Dict,
+                                 ctxt: NetworkContext) -> Dict:
+        return parseDict.copy()
+
+    @staticmethod
     def addGeometricalConstraint(tilerModel: TilerModel, parseDict: Dict, ctxt: NetworkContext) -> TilerModel:
         inputBufferName = parseDict['data_in']
         outputBufferName = parseDict['data_out']

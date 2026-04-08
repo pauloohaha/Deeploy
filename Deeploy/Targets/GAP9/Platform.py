@@ -288,7 +288,7 @@ class GAP9StructBuffer(StructBuffer):
     deallocTemplate = NodeTemplate("")
 
 
-_includeList = ["pmsis.h", "DeeployGAP9Math.h", "pulp_nn_kernels.h", "DeeployMchan.h", "CNN_BasicKernels_fp32.h", "CNN_BasicKernels_NE16.h", "tc_layout_neighbor.h", "ne16_utils.h", "layernorm_fp16.h"]
+_includeList = ["pmsis.h", "DeeployGAP9Math.h", "pulp_nn_kernels.h", "DeeployMchan.h", "CNN_BasicKernels_fp32.h", "CNN_BasicKernels_NE16.h", "tc_layout_neighbor.h", "ne16_utils.h", "layernorm_fp16.h", "CNN_Copy.h"]
 
 
 class GAP9ClusterEngine(DeploymentEngine):

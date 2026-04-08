@@ -157,6 +157,19 @@ int main(void) {
       pi_cluster_send_task_to_cl(&cluster_dev, &cluster_task);
 
       tot_err += float_error_count;
+    } else if (ISOUTPUTFLOAT16) {
+      uint32_t num_fp16 = DeeployNetwork_outputs_bytes[buf] / sizeof(float16);
+      float16 *expected_fp16 = (float16 *)testOutputVector[buf];
+      float16 *actual_fp16 = (float16 *)compbuf;
+      for (uint32_t i = 0; i < num_fp16; i++) {
+        float16 diff = expected_fp16[i] - actual_fp16[i];
+        float16 abs_diff = diff < (float16)0.0f ? -diff : diff;
+        if (abs_diff > (float16)0.01f) {
+          tot_err += 1;
+          printf("Expected: %f  Actual: %f  Diff: %f at Index %u in Output %u\r\n",
+                 (float)expected_fp16[i], (float)actual_fp16[i], (float)diff, i, buf);
+        }
+      }
     } else {
 
       for (uint32_t i = 0;
