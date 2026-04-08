@@ -57,6 +57,7 @@ target_include_directories(deeploygap9
 
 target_compile_options(deeploygap9 PUBLIC
     -DNUM_CORES=${NUM_CORES}
+    -DSTD_FLOAT
   )
 
 target_compile_options(deeploygap9 PRIVATE

@@ -30,7 +30,7 @@ class SignPropTypeChecker(NodeTypeChecker):
                 if not _type.referencedType.checkPromotion(reference.values):
                     raise Exception(f"Can't cast {reference} to {_type}!")
 
-                reference.nLevels = reference.values.max() - reference.values.min()
+                reference.nLevels = int(reference.values.max()) - int(reference.values.min())
                 reference._signed = _type.referencedType.typeMin < 0
 
         return ctxt

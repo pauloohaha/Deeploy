@@ -15,7 +15,8 @@ from Deeploy.Targets.GAP9.Tiler import GAP9AddTilingReadyBindings, GAP9ConcatTil
     GAP9Conv2DTilingReadyBindings, GAP9DWConv2DTilingReadyBindings, GAP9FlattenTilingReadyBindings, \
     GAP9FPGELUTilingReadyBindings, GAP9FPGEMMTilingReadyBindings, GAP9GatherTilingReadyBindings, \
     GAP9iHardswishTilingReadyBindings, GAP9iRMSNormTilingReadyBindings, GAP9iRQSGELUTilingReadyBindings, \
-    GAP9LayernormTilingReadyBindings, GAP9MatMulTilingReadyBindings, GAP9MaxPool2DTilingReadyBindings, \
+    GAP9LayernormTilingReadyBindings, \
+    GAP9MatMulTilingReadyBindings, GAP9MaxPool2DTilingReadyBindings, \
     GAP9MulTilingReadyBindings, GAP9ReduceSumTilingReadyBindings, GAP9ReluTilingReadyBindings, \
     GAP9RQAddTilingReadyBindings, GAP9RQSConv2DTilingReadyBindings, GAP9RQSDWConv2DTilingReadyBindings, \
     GAP9RQSGEMMTilingReadyBindings, GAP9NE16RQSGEMMTilingReadyBindings, GAP9NE16GEMMInt32TilingReadyBindings, \
@@ -287,7 +288,7 @@ class GAP9StructBuffer(StructBuffer):
     deallocTemplate = NodeTemplate("")
 
 
-_includeList = ["pmsis.h", "DeeployGAP9Math.h", "pulp_nn_kernels.h", "DeeployMchan.h", "CNN_BasicKernels_fp32.h", "CNN_BasicKernels_NE16.h", "tc_layout_neighbor.h", "ne16_utils.h"]
+_includeList = ["pmsis.h", "DeeployGAP9Math.h", "pulp_nn_kernels.h", "DeeployMchan.h", "CNN_BasicKernels_fp32.h", "CNN_BasicKernels_NE16.h", "tc_layout_neighbor.h", "ne16_utils.h", "layernorm_fp16.h"]
 
 
 class GAP9ClusterEngine(DeploymentEngine):

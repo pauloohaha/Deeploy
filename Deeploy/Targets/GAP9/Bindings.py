@@ -13,8 +13,8 @@ import itertools
 from Deeploy.AbstractDataTypes import PointerClass
 from Deeploy.CommonExtensions.CodeTransformationPasses.MemoryAllocation import ArgumentStructGeneration, \
     MemoryManagementGeneration, MemoryPassthroughGeneration
-from Deeploy.CommonExtensions.DataTypes import FloatDataTypes, IntegerDataTypes, SignedIntegerDataTypes, float32_t, \
-    int8_t, int32_t, int64_t, uint8_t
+from Deeploy.CommonExtensions.DataTypes import FloatDataTypes, IntegerDataTypes, SignedIntegerDataTypes, float16_t, \
+    float32_t, int8_t, int32_t, int64_t, uint8_t
 from Deeploy.DeeployTypes import CodeTransformation, NodeBinding
 from Deeploy.FutureExtension.Bindings.AutoFutureBinding import AutoFutureBinding
 from Deeploy.CommonExtensions.CodeTransformationPasses.MemoryAllocation import ArgumentStructGeneration, \
@@ -419,11 +419,20 @@ GAP9MulBindings = [
 GAP9ReluBinding = NodeBinding(ReluChecker([PointerClass(float32_t)], [PointerClass(float32_t)]),
                               FloatReluTemplate.referenceTemplate, GAP9Transformer)
 
-GAP9LayernormBinding = NodeBinding(
-    LayerNormChecker(
-        [PointerClass(float32_t), PointerClass(float32_t),
-         PointerClass(float32_t)], [PointerClass(float32_t)]), FloatLayernormTemplate.referenceTemplate,
-    GAP9Transformer)
+from Deeploy.Targets.GAP9.Templates import FP16LayernormTemplate
+
+GAP9LayernormBindings = [
+    NodeBinding(
+        LayerNormChecker(
+            [PointerClass(float16_t), PointerClass(float16_t),
+             PointerClass(float16_t)], [PointerClass(float16_t)]),
+        FP16LayernormTemplate.referenceTemplate, GAP9Transformer),
+    NodeBinding(
+        LayerNormChecker(
+            [PointerClass(float32_t), PointerClass(float32_t),
+             PointerClass(float32_t)], [PointerClass(float32_t)]),
+        FloatLayernormTemplate.referenceTemplate, GAP9Transformer),
+]
 
 GAP9FloatGELUBinding = NodeBinding(
     GELUChecker([PointerClass(float32_t), PointerClass(float32_t)], [PointerClass(float32_t)]),
@@ -439,6 +448,10 @@ GAP9QuantBindings = [
                 GAP9Transformer),
     NodeBinding(QuantChecker([PointerClass(float32_t)], [PointerClass(uint8_t)]), QuantTemplate.referenceTemplate,
                 GAP9Transformer),
+    NodeBinding(QuantChecker([PointerClass(float16_t)], [PointerClass(int8_t)]), QuantTemplate.referenceTemplate,
+                GAP9Transformer),
+    NodeBinding(QuantChecker([PointerClass(float16_t)], [PointerClass(uint8_t)]), QuantTemplate.referenceTemplate,
+                GAP9Transformer),
 ]
 
 GAP9DequantBindings = [
@@ -447,6 +460,8 @@ GAP9DequantBindings = [
     NodeBinding(DequantChecker([PointerClass(uint8_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
                 GAP9Transformer),
     NodeBinding(DequantChecker([PointerClass(int32_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
+                GAP9Transformer),
+    NodeBinding(DequantChecker([PointerClass(int32_t)], [PointerClass(float16_t)]), DequantTemplate.referenceTemplate,
                 GAP9Transformer),
 ]
 

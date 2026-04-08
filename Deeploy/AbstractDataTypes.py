@@ -294,7 +294,7 @@ class FloatImmediate(Immediate[Union[float, Iterable[float]], _ImmediateType]):
 
             # Check if mantissa is representable. Implicit assumption is that cls.typeMantissa < 52 (like in FP64)
             truncated_mantissa = 1 + math.floor((2**cls.typeMantissa) * (mantissa - 1)) / (2**cls.typeMantissa)
-            if math.fabs(truncated_mantissa - mantissa) > 0.0:
+            if math.fabs(truncated_mantissa - mantissa) > 0.001:
                 return False
 
         return True

@@ -124,6 +124,9 @@ def generateTestNetworkHeader(deployer: NetworkDeployer) -> str:
     #include <stdlib.h>
     """
     retStr += deployer.generateIncludeString()
+    retStr += """
+    #define float16_t float16
+    """
     if isinstance(deployer.Platform, (PULPPlatform, MemoryPULPPlatform, MemoryPULPPlatformWrapper)):
         retStr += """
         void RunNetwork();
