@@ -51,7 +51,13 @@ from Deeploy.Targets.PULPOpen.Parsers import PULPConv1DParser, PULPConv2DParser,
     PULPDWConv2DParser, PULPFPConv2DParser, PULPFPDWConv2DParser, PULPGEMMParser, PULPMatrixVecParser, \
     PULPTallGEMMParser
 from Deeploy.Targets.PULPOpen.Platform import PULPOptimizer
-
+from Deeploy.Targets.Generic.TopologyOptimizationPasses.Passes import DequantPatternPass, IntegerDivRequantMergePass, \
+    MergeConstAddAndRequantPass, MergeTrueIntegerDivRequantShiftPass, QuantPatternPass, RQSSplitPass, \
+    SkipEmptyConcatPass, SkipUnityRequantPass, iGELURequantMergePass, iHardswishRequantMergePass
+from Deeploy.Targets.PULPOpen.TopologyOptimizationPasses.Passes import PULPAddRequantMergePass, \
+    PULPConvRequantMergePass, PULPGEMMRequantMergePass, PULPMatMulRequantMergePass
+from Deeploy.CommonExtensions.OptimizationPasses.TopologyOptimizationPasses.LoweringOptimizationPasses import \
+    RemoveEmptyConvBiasPass, RemoveOnlySingletonReduceMeanPass
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather, Instancenorm2d
 from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, \
@@ -117,10 +123,26 @@ TCneighborGatherMapper = NodeMapper(TCneighborGatherParser(), TCneighborGatherTi
 Instancenorm2dMapper = NodeMapper(InstanceNorm2DParser(), Instancenorm2dTilingReadyBindings)
 
 GAP9Optimizer = TopologyOptimizer([
-    *PULPOptimizer.passes[:2],
+    QuantPatternPass(),
+    DequantPatternPass(),
     DequantQuantMergePass(),
     MatMulAddMergePass(),
-    *PULPOptimizer.passes[2:],
+    SkipEmptyConcatPass(),
+    SkipUnityRequantPass(previous_op_regex = "Concat", num_inputs = 2),
+    SkipUnityRequantPass(previous_op_regex = "Reshape|Transpose", num_inputs = 1),
+    SkipUnityRequantPass(previous_op_regex = "Reshape|Transpose", num_inputs = 1),
+    # RQSSplitPass(),
+    MergeTrueIntegerDivRequantShiftPass(),
+    IntegerDivRequantMergePass(),
+    iGELURequantMergePass(),
+    iHardswishRequantMergePass(),
+    PULPConvRequantMergePass(),
+    MergeConstAddAndRequantPass(),
+    PULPGEMMRequantMergePass(),
+    PULPMatMulRequantMergePass(),
+    # PULPAddRequantMergePass(),
+    RemoveEmptyConvBiasPass(),
+    RemoveOnlySingletonReduceMeanPass(),
     NE16AdjustGEMMWeightLayoutPass(),
 ], name = "GAP9Optimizer")
 
