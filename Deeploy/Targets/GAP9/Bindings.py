@@ -443,27 +443,27 @@ GAP9GatherBindings = [
                 GatherTemplate.referenceTemplate, GAP9Transformer) for type in IntegerDataTypes
 ]
 
-from Deeploy.Targets.GAP9.Templates import FP16QuantTemplate
+from Deeploy.Targets.GAP9.Templates import GAP9SDKDequantQuantTemplate
 
 GAP9QuantBindings = [
-    NodeBinding(QuantChecker([PointerClass(float16_t)], [PointerClass(int8_t)]), FP16QuantTemplate.fp16QuantI8Template,
+    # NodeBinding(QuantChecker([PointerClass(float16_t)], [PointerClass(int8_t)]), GAP9SDKDequantQuantTemplate.fp16QuantI8Template,
+    #             GAP9Transformer),
+    # NodeBinding(QuantChecker([PointerClass(float16_t)], [PointerClass(uint8_t)]), GAP9SDKDequantQuantTemplate.fp16QuantU8Template,
+    #             GAP9Transformer),
+    NodeBinding(QuantChecker([PointerClass(float32_t)], [PointerClass(int8_t)]), GAP9SDKDequantQuantTemplate.fp32QuantI8Template,
                 GAP9Transformer),
-    NodeBinding(QuantChecker([PointerClass(float16_t)], [PointerClass(uint8_t)]), FP16QuantTemplate.fp16QuantU8Template,
-                GAP9Transformer),
-    NodeBinding(QuantChecker([PointerClass(float32_t)], [PointerClass(int8_t)]), QuantTemplate.referenceTemplate,
-                GAP9Transformer),
-    NodeBinding(QuantChecker([PointerClass(float32_t)], [PointerClass(uint8_t)]), QuantTemplate.referenceTemplate,
+    NodeBinding(QuantChecker([PointerClass(float32_t)], [PointerClass(uint8_t)]), GAP9SDKDequantQuantTemplate.fp32QuantU8Template,
                 GAP9Transformer),
 ]
 
 GAP9DequantBindings = [
-    NodeBinding(DequantChecker([PointerClass(int8_t)], [PointerClass(float16_t)]), FP16QuantTemplate.fp16DequantI8Template,
+    # NodeBinding(DequantChecker([PointerClass(int8_t)], [PointerClass(float16_t)]), GAP9SDKDequantQuantTemplate.fp16DequantI8Template,
+    #             GAP9Transformer),
+    # NodeBinding(DequantChecker([PointerClass(uint8_t)], [PointerClass(float16_t)]), GAP9SDKDequantQuantTemplate.fp16DequantU8Template,
+    #             GAP9Transformer),
+    NodeBinding(DequantChecker([PointerClass(int8_t)], [PointerClass(float32_t)]), GAP9SDKDequantQuantTemplate.fp32DequantI8Template,
                 GAP9Transformer),
-    NodeBinding(DequantChecker([PointerClass(uint8_t)], [PointerClass(float16_t)]), FP16QuantTemplate.fp16DequantU8Template,
-                GAP9Transformer),
-    NodeBinding(DequantChecker([PointerClass(int8_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
-                GAP9Transformer),
-    NodeBinding(DequantChecker([PointerClass(uint8_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
+    NodeBinding(DequantChecker([PointerClass(uint8_t)], [PointerClass(float32_t)]), GAP9SDKDequantQuantTemplate.fp32DequantU8Template,
                 GAP9Transformer),
     NodeBinding(DequantChecker([PointerClass(int32_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
                 GAP9Transformer),
