@@ -14,7 +14,7 @@ from Deeploy.AbstractDataTypes import PointerClass
 from Deeploy.CommonExtensions.CodeTransformationPasses.MemoryAllocation import ArgumentStructGeneration, \
     MemoryManagementGeneration, MemoryPassthroughGeneration
 from Deeploy.CommonExtensions.DataTypes import FloatDataTypes, IntegerDataTypes, SignedIntegerDataTypes, float16_t, \
-    float32_t, int8_t, int32_t, int64_t, uint8_t
+    float32_t, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t
 from Deeploy.DeeployTypes import CodeTransformation, NodeBinding
 from Deeploy.FutureExtension.Bindings.AutoFutureBinding import AutoFutureBinding
 from Deeploy.CommonExtensions.CodeTransformationPasses.MemoryAllocation import ArgumentStructGeneration, \
@@ -173,6 +173,9 @@ GAP9RQAddBindings = [
 ]
 
 GAP9AddBindings = [
+    NodeBinding(AddChecker([PointerClass(int8_t), PointerClass(int8_t)], [PointerClass(int16_t)]),
+                AddTemplate.referenceTemplate, GAP9Transformer),
+] + [
     NodeBinding(AddChecker([PointerClass(type1), PointerClass(type2)], [PointerClass(int32_t)]),
                 AddTemplate.referenceTemplate, GAP9Transformer)
     for type1 in IntegerDataTypes
@@ -464,6 +467,10 @@ GAP9DequantBindings = [
     NodeBinding(DequantChecker([PointerClass(int8_t)], [PointerClass(float32_t)]), GAP9SDKDequantQuantTemplate.fp32DequantI8Template,
                 GAP9Transformer),
     NodeBinding(DequantChecker([PointerClass(uint8_t)], [PointerClass(float32_t)]), GAP9SDKDequantQuantTemplate.fp32DequantU8Template,
+                GAP9Transformer),
+    NodeBinding(DequantChecker([PointerClass(int16_t)], [PointerClass(float32_t)]), GAP9SDKDequantQuantTemplate.fp32DequantI16Template,
+                GAP9Transformer),
+    NodeBinding(DequantChecker([PointerClass(uint16_t)], [PointerClass(float32_t)]), GAP9SDKDequantQuantTemplate.fp32DequantU16Template,
                 GAP9Transformer),
     NodeBinding(DequantChecker([PointerClass(int32_t)], [PointerClass(float32_t)]), DequantTemplate.referenceTemplate,
                 GAP9Transformer),

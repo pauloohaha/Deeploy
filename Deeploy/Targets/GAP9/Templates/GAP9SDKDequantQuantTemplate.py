@@ -87,6 +87,42 @@ fp32DequantU8Template = NodeTemplate("""
 }
 """)
 
+# int16 → fp32: SDK kernel CNN_FpFloat32
+fp32DequantI16Template = NodeTemplate("""
+// FP32 Dequant int16→fp32 (Name: ${nodeName}, Op: ${nodeOp})
+{
+    signed char _dq_infos[8];
+    *((float *)(_dq_infos + 0)) = (float)(-(${zero_point}));
+    *((float *)(_dq_infos + 4)) = (float)(${scale});
+    CNN_FpFloat32_T _dq_arg = {
+        .In = (short int *)${data_in},
+        .Out = (float *)${data_out},
+        .W = ${size},
+        .H = 1,
+        .Infos = _dq_infos,
+    };
+    CNN_FpFloat32(&_dq_arg);
+}
+""")
+
+# uint16 → fp32: SDK kernel CNN_UFpFloat32
+fp32DequantU16Template = NodeTemplate("""
+// FP32 Dequant uint16→fp32 (Name: ${nodeName}, Op: ${nodeOp})
+{
+    signed char _dq_infos[8];
+    *((float *)(_dq_infos + 0)) = (float)(-(${zero_point}));
+    *((float *)(_dq_infos + 4)) = (float)(${scale});
+    CNN_UFpFloat32_T _dq_arg = {
+        .In = (unsigned short int *)${data_in},
+        .Out = (float *)${data_out},
+        .W = ${size},
+        .H = 1,
+        .Infos = _dq_infos,
+    };
+    CNN_UFpFloat32(&_dq_arg);
+}
+""")
+
 # ============================================================
 # Quant templates: fp16 → int (SDK kernels from CNN_Copy.c)
 # ============================================================
