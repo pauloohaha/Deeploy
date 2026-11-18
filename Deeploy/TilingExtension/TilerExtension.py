@@ -519,7 +519,36 @@ class Tiler():
         for key in self.innerMemoryScheduler.memoryMap.keys():
             memoryMap[key] = [*self.innerMemoryScheduler.memoryMap[key], *self.outerMemoryScheduler.memoryMap[key]]
 
-        if self.memoryAllocStrategy == "MiniMalloc":
+        if self.memoryAllocStrategy == "MiniMalloc" and os.environ.get("DEEPLOY_MINIMALLOC_MULTILEVEL") == "1":
+            # Activations annotated to a non-default level (e.g. L2) live across nodes: allocate them by lifetime
+            # in [0, R) of that level, and every node's tile buffers in [R, capacity) (shifted by R).
+            log.debug(" - Solve Memory Allocation with MiniMalloc (multi-level)")
+            for memoryLevel in memoryMap.keys():
+                constantTensorOffset = self.outerMemoryScheduler.getConstantTensorOffset(ctxt, memoryLevel)
+                capacity = self.memoryHierarchy.memoryLevels[memoryLevel].size - constantTensorOffset
+                nInner = len(self.innerMemoryScheduler.memoryMap[memoryLevel])
+                if memoryLevel == self.memoryHierarchy._defaultMemoryLevel.name:
+                    memoryMap[memoryLevel][-1] = self.minimalloc(memoryMap[memoryLevel][-1], ctxt, None, capacity,
+                                                                 memoryLevel)
+                    reserved = 0
+                else:
+                    reserved = 0
+                    for idx in range(nInner, len(memoryMap[memoryLevel])):
+                        if len(memoryMap[memoryLevel][idx]) != 0:
+                            memoryMap[memoryLevel][idx] = self.minimalloc(memoryMap[memoryLevel][idx], ctxt, None,
+                                                                          capacity, memoryLevel)
+                            reserved = max([reserved] + [b._addrSpace[1] for b in memoryMap[memoryLevel][idx]])
+                    reserved = ((reserved + 63) // 64) * 64
+                for idx in range(nInner):
+                    memMap = memoryMap[memoryLevel][idx]
+                    if len(memMap) == 0 or memoryLevel == self.memoryHierarchy._defaultMemoryLevel.name:
+                        continue
+                    memoryMap[memoryLevel][idx] = self.minimalloc(memMap, ctxt, tilingSolution[idx].nodeConstraints[0],
+                                                                  capacity - reserved, memoryLevel)
+                    for b in memoryMap[memoryLevel][idx]:
+                        b._addrSpace = (b._addrSpace[0] + reserved, b._addrSpace[1] + reserved)
+            log.info(f" {SUCCESS_MARK} Memory allocation successful!")
+        elif self.memoryAllocStrategy == "MiniMalloc":
             log.debug(" - Solve Memory Allocation with MiniMalloc")
             for memoryLevel in memoryMap.keys():
                 constantTensorOffset = self.outerMemoryScheduler.getConstantTensorOffset(ctxt, memoryLevel)
@@ -631,6 +660,9 @@ class Tiler():
 
         self.tilerModel = tilerModel
         self.symbolicMemoryConstraints = allSymbolicMemoryConstraints
+        # Kept for _getTilingSolution: maps each step's constraints back to its node and target memory levels
+        self._tilingSchedule = wrapSchedule
+        self._targetMemoryLevelMapping = targetMemoryLevelMapping
 
         return ctxt
 
@@ -837,15 +869,50 @@ class Tiler():
                 return False
             return True
 
-        for patternConstraints in allConstraints:
+        schedule = getattr(self, "_tilingSchedule", None)
+        targetMemoryLevelMapping = getattr(self, "_targetMemoryLevelMapping", None)
+        if schedule is not None:
+            assert len(schedule) == len(allConstraints), "Tiling schedule and memory constraints are misaligned!"
+
+        def _residentOperandIO(ctxt, node, tensorName, tensorConstraint) -> Optional[str]:
+            # An operand that already lives at the level its kernel reads from (home level == target level),
+            # e.g. an activation promoted to L2 that feeds a kernel taking L2 pointers. Its constraint has a
+            # single level, so _checkResolve would drop it, but code generation still needs its home entry
+            # (addrSpace None) to treat it as resident. Returns "input"/"output" for such an operand, else None.
+            # Tensors that are only live across the node are not operands and stay dropped.
+            if node is None or targetMemoryLevelMapping is None or len(tensorConstraint.memoryConstraints) != 1:
+                return None
+            buffer = ctxt.lookup(tensorName)
+            if isinstance(buffer, TransientBuffer):
+                return None
+            level = next(iter(tensorConstraint.memoryConstraints.keys()))
+            if level != getattr(buffer, "_memoryLevel", None):
+                return None
+            try:
+                targetLevel = targetMemoryLevelMapping.lookup(node.name, tensorName)
+            except KeyError:
+                return None  # not an input or output of this node
+            if targetLevel != level:
+                return None
+            # The step constraint labels such a tensor "intermediate" (it comes from the live set), so take
+            # the direction from the node itself.
+            if tensorName in [t.name for t in node.outputs]:
+                return "output"
+            return "input"
+
+        for patternIdx, patternConstraints in enumerate(allConstraints):
             newMemoryConstraint = PatternMemoryConstraints()
-            for stepConstraints in patternConstraints.nodeConstraints:
+            pattern = schedule[patternIdx] if schedule is not None else []
+            for stepIdx, stepConstraints in enumerate(patternConstraints.nodeConstraints):
+                node = pattern[stepIdx] if stepIdx < len(pattern) else None
                 newStepMemoryConstraint = NodeMemoryConstraint()
                 for tensorName, tensorConstraint in stepConstraints.tensorMemoryConstraints.items():
-                    if _checkResolve(ctxt, tensorName, tensorConstraint):
+                    keep = _checkResolve(ctxt, tensorName, tensorConstraint)
+                    residentIO = None if keep else _residentOperandIO(ctxt, node, tensorName, tensorConstraint)
+                    if keep or residentIO is not None:
                         solvedTensorConstraint = self._resolveTensorMemoryConstraint(
                             tilerModel, ctxt, collector, tensorConstraint)
-                        ioDir = stepConstraints.getIO(tensorName)
+                        ioDir = stepConstraints.getIO(tensorName) if residentIO is None else residentIO
                         newStepMemoryConstraint.addTensorConstraint(solvedTensorConstraint, ioDir)
 
                 newMemoryConstraint.addConstraint(newStepMemoryConstraint)
@@ -1850,7 +1917,7 @@ class TilerDeployerWrapper(NetworkDeployerWrapper):
             # JUNGVI: Currently using MiniMalloc is only supported for layer-wise execution and all tensors in the default memory level.
             if self.tiler.memoryAllocStrategy == "MiniMalloc":
                 assert self.tiler.assertLayerWiseTiling(schedule), "Using MiniMalloc and DFT is not supported!"
-                assert self.tiler.assertUniformMemoryLevelAllocation(
+                assert os.environ.get("DEEPLOY_MINIMALLOC_MULTILEVEL") == "1" or self.tiler.assertUniformMemoryLevelAllocation(
                     self.ctxt, self.Platform.memoryHierarchy._defaultMemoryLevel.name
                 ), "All tensors have to be in the default memory level when using MiniMalloc!"
 
