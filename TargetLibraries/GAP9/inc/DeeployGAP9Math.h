@@ -21,7 +21,9 @@
 
 #include "dory_dma.h"
 #include "dory_mem.h"
-#include "kernel/Layernorm.h"
+#include "../../PULPOpen/inc/kernel/Layernorm.h"
+#include "../../PULPOpen/inc/kernel/UniformRequantShift.h"
+#include "column_softmax_gap9.h"
 
 #include "pmsis.h"
 
