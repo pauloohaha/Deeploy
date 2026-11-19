@@ -171,6 +171,9 @@ class TileConstraint():
                                    absoluteOffset = initialOffset)
         ]
 
+        # Output resident at the target level only (memory path of length 1, e.g. promoted to L2 by an op that
+        # keeps its operands in L2): no transfer, the whole tensor is the single tile.
+        solutionLengths = [len(outputCubes)]
         for source, target in zip(memoryPath[:targetIdx], memoryPath[1:targetIdx + 1]):
             outputCubes, solutionLengths = getCubeTransfers(outTensorConstraint, outputCubes, source, target)
 

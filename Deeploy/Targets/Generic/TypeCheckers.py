@@ -209,6 +209,44 @@ class LayerNormChecker(SignPropTypeChecker):
         return [True]
 
 
+class RequantizedLayerNormChecker(SignPropTypeChecker):
+    """Dequant -> LayerNorm -> Quant fused: integer in, integer out with the Quant's signedness and bit width."""
+
+    def __init__(self, input_types: Sequence[Type[Pointer]], output_types: Sequence[Type[Pointer]]):
+        super().__init__(input_types, output_types)
+
+    def checkOutputType(self, inputs: List[VariableBuffer], operatorRepresentation: OperatorRepresentation) -> bool:
+        outputTypeSigned = self.output_types[0].referencedType.typeMin < 0
+        return bool(operatorRepresentation['out_signed']) == outputTypeSigned
+
+    def _inferNumLevels(self, inputs: List[VariableBuffer],
+                        operatorRepresentation: OperatorRepresentation) -> List[int]:
+        return [2**int(operatorRepresentation['out_bit_width'])]
+
+    def _inferSignedness(self, inputs: List[VariableBuffer],
+                         operatorRepresentation: OperatorRepresentation) -> List[bool]:
+        return [bool(operatorRepresentation['out_signed'])]
+
+
+class RequantizedOpChecker(SignPropTypeChecker):
+    """Integer op with a fused uniform RequantShift: output signedness / levels from 'signed' / 'n_levels'."""
+
+    def __init__(self, input_types: Sequence[Type[Pointer]], output_types: Sequence[Type[Pointer]]):
+        super().__init__(input_types, output_types)
+
+    def checkOutputType(self, inputs: List[VariableBuffer], operatorRepresentation: OperatorRepresentation) -> bool:
+        outputTypeSigned = self.output_types[0].referencedType.typeMin < 0
+        return bool(operatorRepresentation['signed']) == outputTypeSigned
+
+    def _inferNumLevels(self, inputs: List[VariableBuffer],
+                        operatorRepresentation: OperatorRepresentation) -> List[int]:
+        return [int(operatorRepresentation['n_levels'])]
+
+    def _inferSignedness(self, inputs: List[VariableBuffer],
+                         operatorRepresentation: OperatorRepresentation) -> List[bool]:
+        return [bool(operatorRepresentation['signed'])]
+
+
 class MulChecker(SignPropTypeChecker):
 
     def __init__(self, input_types: Sequence[Type[Pointer]], output_types: Sequence[Type[Pointer]]):

@@ -79,13 +79,20 @@ def generateTestInputsHeader(deployer: NetworkDeployer, test_inputs: List) -> st
 
 def generateTestOutputsHeader(deployer: NetworkDeployer, test_outputs: List[np.ndarray]) -> str:
     retStr = ""
+    isFloat, elemBytes, isSigned = [], [], []
     for index, values in enumerate(test_outputs):
-        typeName = deployer.ctxt.lookup(f'output_{index}')._type.referencedType.typeName
-        typeWidth = deployer.ctxt.lookup(f'output_{index}')._type.referencedType.typeWidth
+        referencedType = deployer.ctxt.lookup(f'output_{index}')._type.referencedType
+        typeName = referencedType.typeName
+        typeWidth = referencedType.typeWidth
+        isFloat.append(int(typeName == 'float32_t') + 2 * int(typeName == 'float16_t'))
+        elemBytes.append(typeWidth // 8)
+        isSigned.append(int(getattr(referencedType, 'typeMin', -1) < 0))
 
-        retStr += f"#define OUTPUTTYPE {typeName}\n"
-        retStr += f"#define ISOUTPUTFLOAT {int(typeName == 'float32_t')}\n"
-        retStr += f"#define ISOUTPUTFLOAT16 {int(typeName == 'float16_t')}\n"
+        # Kept for harnesses that compare all outputs with one type (the first output's)
+        if index == 0:
+            retStr += f"#define OUTPUTTYPE {typeName}\n"
+            retStr += f"#define ISOUTPUTFLOAT {int(typeName == 'float32_t')}\n"
+            retStr += f"#define ISOUTPUTFLOAT16 {int(typeName == 'float16_t')}\n"
         retStr += f"{typeName} testOutputVector{index}[] ="
         retStr += "{"
 
@@ -109,6 +116,11 @@ def generateTestOutputsHeader(deployer: NetworkDeployer, test_outputs: List[np.n
     retStr += f"void* testOutputVector[{len(test_outputs)}] = " + "{"
     retStr += ", ".join([f"testOutputVector{idx}" for idx, _ in enumerate(test_outputs)])
     retStr += "};\n"
+
+    # Per-output element type, for harnesses with outputs of different types (0 = integer, 1 = fp32, 2 = fp16)
+    retStr += f"const uint8_t testOutputIsFloat[{len(test_outputs)}] = {{{', '.join(map(str, isFloat))}}};\n"
+    retStr += f"const uint8_t testOutputElemBytes[{len(test_outputs)}] = {{{', '.join(map(str, elemBytes))}}};\n"
+    retStr += f"const uint8_t testOutputIsSigned[{len(test_outputs)}] = {{{', '.join(map(str, isSigned))}}};\n"
 
     return retStr
 

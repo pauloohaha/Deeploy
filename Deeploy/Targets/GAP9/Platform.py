@@ -15,7 +15,7 @@ from Deeploy.Targets.GAP9.Tiler import GAP9AddTilingReadyBindings, GAP9ConcatTil
     GAP9Conv2DTilingReadyBindings, GAP9DWConv2DTilingReadyBindings, GAP9FlattenTilingReadyBindings, \
     GAP9FPGELUTilingReadyBindings, GAP9FPGEMMTilingReadyBindings, GAP9GatherTilingReadyBindings, \
     GAP9iHardswishTilingReadyBindings, GAP9iRMSNormTilingReadyBindings, GAP9iRQSGELUTilingReadyBindings, \
-    GAP9LayernormTilingReadyBindings, \
+    GAP9LayernormTilingReadyBindings, GAP9RequantizedLayernormTilingReadyBindings, \
     GAP9MatMulTilingReadyBindings, GAP9MaxPool2DTilingReadyBindings, \
     GAP9MulTilingReadyBindings, GAP9ReduceSumTilingReadyBindings, GAP9ReluTilingReadyBindings, \
     GAP9RQAddTilingReadyBindings, GAP9RQSConv2DTilingReadyBindings, GAP9RQSDWConv2DTilingReadyBindings, \
@@ -27,6 +27,9 @@ from Deeploy.Targets.GAP9.Tiler import GAP9AddTilingReadyBindings, GAP9ConcatTil
     GAP9UniformRQSTilingReadyBindings,     CustomColSoftmaxTilingReadyBindings, CustomColScatterTilingReadyBindings, \
     CustomColSumTilingReadyBindings, CustomElementMulTilingReadyBindings, FloatSigmoidTilingReadyBindings, \
     TCneighborGatherTilingReadyBindings, Instancenorm2dTilingReadyBindings, QuantTilingReadyBindings, \
+    RequantizedTCneighborGatherTilingReadyBindings, GAP9AddRequantShiftTilingReadyBindings, \
+    GAP9DequantQuantTilingReadyBindings, GAP9ColAttnPoolTilingReadyBindings, GAP9ScatterQuantTilingReadyBindings, \
+    GAP9ScatterScatterRQLNTilingReadyBindings, \
     DeQuantTilingReadyBindings
 from Deeploy.Targets.Generic.Bindings import BasicGEMMBindings, BasicPad1DBindings, BasicPad2DBindings, \
     BasicRQIntegerDivBinding
@@ -43,7 +46,10 @@ from Deeploy.Targets.Generic.Parsers import AddParser, ConcatParser, DequantPars
     TransposeParser, UniformRequantShiftParser, UnsqueezeParser, iHardswishParser, iRMSNormParser, iSoftmaxParser
 from Deeploy.Targets.Generic.Templates import AllocateTemplate as BasicAllocateTemplate
 from Deeploy.Targets.Generic.TopologyOptimizationPasses.Passes import DequantQuantMergePass, MatMulAddMergePass
-from Deeploy.Targets.GAP9.TopologyOptimizationPasses.Passes import NE16AdjustGEMMWeightLayoutPass
+from Deeploy.Targets.GAP9.TopologyOptimizationPasses.Passes import GAP9AddRequantShiftPass, \
+    GAP9RequantizedGatherPass, GAP9RequantizedLayerNormPass, \
+    GAP9AttentionInt8FusionPass, \
+    GAP9StripGraphInputQuantPass, GAP9StripGraphOutputDequantPass, NE16AdjustGEMMWeightLayoutPass
 from Deeploy.Targets.PULPOpen.Bindings import BasicDequantBindings, BasicQuantBindings, PULPDMASliceBindings, \
     PULPDWConv1DBinding, PULPReduceMeanBindings, PULPRQSConv1DBindings, PULPSliceBindings
 from Deeploy.Targets.PULPOpen.Layers import PULPRQSConvLayer, PULPRQSGEMMLayer
@@ -61,7 +67,9 @@ from Deeploy.CommonExtensions.OptimizationPasses.TopologyOptimizationPasses.Lowe
 # Import GAP9-specific tiler bindings
 from Deeploy.Targets.GAP9.Layers import CustomColSoftmax, CustomColSum, CustomColScatter, Sigmoid, TCneighborGather, Instancenorm2d
 from Deeploy.Targets.GAP9.Parsers import CustomColSoftmaxParser, CustomColScatterParser, CustomColSumParser, \
-    FloatSigmoidParser, NE16GEMMParser, TCneighborGatherParser, InstanceNorm2DParser
+    FloatSigmoidParser, NE16GEMMParser, TCneighborGatherParser, InstanceNorm2DParser, RequantizedLayerNormParser, \
+    RequantizedTCneighborGatherParser, AddRequantShiftParser, DequantQuantParser, ColAttnPoolParser, \
+    ScatterQuantParser, ScatterScatterRQLNParser
 
 # Create GAP9-specific NodeMappers
 GAP9_RQAddMapper = NodeMapper(RQAddParser(), GAP9RQAddTilingReadyBindings)
@@ -96,6 +104,7 @@ GAP9_MatrixVecMapper = NodeMapper(PULPMatrixVecParser(), GAP9RQSMatrixVecTilingR
 GAP9_TallGEMMMapper = NodeMapper(PULPTallGEMMParser(), GAP9RQSTallGEMMTilingReadyBindings)
 GAP9_MaxPool2DMapper = NodeMapper(MaxPool2DParser(), GAP9MaxPool2DTilingReadyBindings)
 GAP9_LayerNormMapper = NodeMapper(LayerNormParser(), GAP9LayernormTilingReadyBindings)
+GAP9_RQLayerNormMapper = NodeMapper(RequantizedLayerNormParser(), GAP9RequantizedLayernormTilingReadyBindings)
 GAP9_ReluMapper = NodeMapper(ReluParser(), GAP9ReluTilingReadyBindings)
 GAP9_SoftmaxMapper = NodeMapper(SoftmaxParser(), GAP9SoftmaxTilingReadyBindings)
 GAP9_SoftmaxGradMapper = NodeMapper(SoftmaxGradParser(), GAP9SoftmaxGradTilingReadyBindings)
@@ -120,12 +129,25 @@ CustomColSumMapper = NodeMapper(CustomColSumParser(), CustomColSumTilingReadyBin
 CustomElementMulMapper = NodeMapper(MulParser(),  CustomElementMulTilingReadyBindings)
 FloatSigmoidMapper = NodeMapper(FloatSigmoidParser(), FloatSigmoidTilingReadyBindings)
 TCneighborGatherMapper = NodeMapper(TCneighborGatherParser(), TCneighborGatherTilingReadyBindings)
+RequantizedTCneighborGatherMapper = NodeMapper(RequantizedTCneighborGatherParser(),
+                                               RequantizedTCneighborGatherTilingReadyBindings)
+GAP9_ColAttnPoolMapper = NodeMapper(ColAttnPoolParser(), GAP9ColAttnPoolTilingReadyBindings)
+GAP9_ScatterQuantMapper = NodeMapper(ScatterQuantParser(), GAP9ScatterQuantTilingReadyBindings)
+GAP9_ScatterScatterRQLNMapper = NodeMapper(ScatterScatterRQLNParser(), GAP9ScatterScatterRQLNTilingReadyBindings)
+GAP9_DequantQuantMapper = NodeMapper(DequantQuantParser(), GAP9DequantQuantTilingReadyBindings)
+GAP9_AddRequantShiftMapper = NodeMapper(AddRequantShiftParser(), GAP9AddRequantShiftTilingReadyBindings)
 Instancenorm2dMapper = NodeMapper(InstanceNorm2DParser(), Instancenorm2dTilingReadyBindings)
 
 GAP9Optimizer = TopologyOptimizer([
     QuantPatternPass(),
     DequantPatternPass(),
+    GAP9StripGraphInputQuantPass(),
+    GAP9StripGraphOutputDequantPass(),
+    GAP9RequantizedLayerNormPass(),
+    GAP9AttentionInt8FusionPass(),
     DequantQuantMergePass(),
+    GAP9RequantizedGatherPass(),
+    GAP9AddRequantShiftPass(),
     MatMulAddMergePass(),
     SkipEmptyConcatPass(),
     SkipUnityRequantPass(previous_op_regex = "Concat", num_inputs = 2),
@@ -160,6 +182,8 @@ GAP9Mapping = {
         GELULayer([GAP9_GELUMapper]),
     'LayerNormalization':
         LayerNormLayer([GAP9_LayerNormMapper]),
+    'RequantizedLayerNormalization':
+        LayerNormLayer([GAP9_RQLayerNormMapper]),
     'MaxPool':
         MaxPoolLayer([GAP9_MaxPool2DMapper]),
     'RequantizediGELU':
@@ -236,6 +260,18 @@ GAP9Mapping = {
         Sigmoid([FloatSigmoidMapper]),
     'TCneighborGather': 
         TCneighborGather([TCneighborGatherMapper]),
+    'RequantizedTCneighborGather':
+        TCneighborGather([RequantizedTCneighborGatherMapper]),
+    'GAP9ColAttnPool':
+        TCneighborGather([GAP9_ColAttnPoolMapper]),
+    'GAP9ScatterQuant':
+        TCneighborGather([GAP9_ScatterQuantMapper]),
+    'GAP9ScatterScatterRQLN':
+        TCneighborGather([GAP9_ScatterScatterRQLNMapper]),
+    'GAP9DequantQuant':
+        QuantLayer([GAP9_DequantQuantMapper]),
+    'GAP9AddRequantShift':
+        AddLayer([GAP9_AddRequantShiftMapper]),
     'InstanceNormalization': 
         Instancenorm2d([Instancenorm2dMapper]) #Piao: Hack, instance norm2d is mapped to instancenorm by onnx
 }

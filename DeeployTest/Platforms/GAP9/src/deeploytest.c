@@ -133,7 +133,9 @@ int main(void) {
   uint32_t float_error_count = 0;
 
   for (uint32_t buf = 0; buf < DeeployNetwork_num_outputs; buf++) {
-    tot_tested += DeeployNetwork_outputs_bytes[buf] / sizeof(OUTPUTTYPE);
+    // per-output element type (outputs may differ, e.g. int8 net state and fp32 flow/weights)
+    uint32_t elem_bytes = testOutputElemBytes[buf];
+    tot_tested += DeeployNetwork_outputs_bytes[buf] / elem_bytes;
 
     if ((uint32_t)DeeployNetwork_outputs[buf] < 0x10000000) {
       compbuf = pi_l2_malloc(DeeployNetwork_outputs_bytes[buf]);
@@ -143,7 +145,7 @@ int main(void) {
       compbuf = DeeployNetwork_outputs[buf];
     }
 
-    if (ISOUTPUTFLOAT) {
+    if (testOutputIsFloat[buf] == 1) {
       float_error_count = 0;
       float_compare_args.expected = testOutputVector[buf];
       float_compare_args.actual = compbuf;
@@ -157,7 +159,7 @@ int main(void) {
       pi_cluster_send_task_to_cl(&cluster_dev, &cluster_task);
 
       tot_err += float_error_count;
-    } else if (ISOUTPUTFLOAT16) {
+    } else if (testOutputIsFloat[buf] == 2) {
       uint32_t num_fp16 = DeeployNetwork_outputs_bytes[buf] / sizeof(float16);
       float16 *expected_fp16 = (float16 *)testOutputVector[buf];
       float16 *actual_fp16 = (float16 *)compbuf;
@@ -172,17 +174,30 @@ int main(void) {
       }
     } else {
 
-      for (uint32_t i = 0;
-           i < DeeployNetwork_outputs_bytes[buf] / sizeof(OUTPUTTYPE); i++) {
-        OUTPUTTYPE expected = ((OUTPUTTYPE *)testOutputVector[buf])[i];
-        OUTPUTTYPE actual = ((OUTPUTTYPE *)compbuf)[i];
-        OUTPUTTYPE diff = expected - actual;
+      uint8_t is_signed = testOutputIsSigned[buf];
+      for (uint32_t i = 0; i < DeeployNetwork_outputs_bytes[buf] / elem_bytes; i++) {
+        int32_t expected, actual;
+        switch (elem_bytes) {
+        case 1:
+          expected = is_signed ? ((int8_t *)testOutputVector[buf])[i] : ((uint8_t *)testOutputVector[buf])[i];
+          actual = is_signed ? ((int8_t *)compbuf)[i] : ((uint8_t *)compbuf)[i];
+          break;
+        case 2:
+          expected = is_signed ? ((int16_t *)testOutputVector[buf])[i] : ((uint16_t *)testOutputVector[buf])[i];
+          actual = is_signed ? ((int16_t *)compbuf)[i] : ((uint16_t *)compbuf)[i];
+          break;
+        default:
+          expected = ((int32_t *)testOutputVector[buf])[i];
+          actual = ((int32_t *)compbuf)[i];
+          break;
+        }
+        int32_t diff = expected - actual;
 
         if (diff) {
           tot_err += 1;
-          printf("Expected: %4d  ", expected);
-          printf("Actual: %4d  ", actual);
-          printf("Diff: %4d at Index %12u in Output %u\r\n", diff, i, buf);
+          printf("Expected: %4ld  ", (long)expected);
+          printf("Actual: %4ld  ", (long)actual);
+          printf("Diff: %4ld at Index %12u in Output %u\r\n", (long)diff, i, buf);
         }
       }
     }

@@ -20,4 +20,24 @@ typedef struct {
 
 void TC_layout_neighbor_gather_int8(TC_layout_neighbor_gather_int8_T *Arg);
 
+/* Gather with the preceding uniform RequantShift fused into the copy (bit-identical to RequantShift -> gather):
+ *   out = clamp(((in + input_offset) * mul + add + rounding * 2^(log2D-1)) >> log2D + output_offset, min, max)
+ * Rows the plain gather zero-fills stay 0 (the requantization of 0 with add = 0 is 0 as well). */
+typedef struct {
+  int8_t *__restrict__ In;
+  int8_t *__restrict__ Out;
+  int * kk_buff;
+  int dir;
+  int dim;
+  int32_t mul;
+  int32_t add;
+  int32_t log2D;
+  int32_t input_offset;
+  int32_t output_offset;
+  int32_t output_min;
+  int32_t output_max;
+  int32_t rounding;
+} TC_layout_neighbor_gather_rqs_int8_T;
+void TC_layout_neighbor_gather_rqs_int8(TC_layout_neighbor_gather_rqs_int8_T *Arg);
+
 #endif

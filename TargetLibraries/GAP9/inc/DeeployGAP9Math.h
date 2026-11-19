@@ -24,6 +24,11 @@
 #include "../../PULPOpen/inc/kernel/Layernorm.h"
 #include "../../PULPOpen/inc/kernel/UniformRequantShift.h"
 #include "column_softmax_gap9.h"
+#include "RequantizedLayernorm.h"
+#include "AddRequantShift.h"
+#include "DequantQuant.h"
+#include "AttentionInt8.h"
+#include "tc_layout_neighbor.h"
 
 #include "pmsis.h"
 

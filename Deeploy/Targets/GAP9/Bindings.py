@@ -39,6 +39,7 @@ from Deeploy.Targets.Generic.Templates import AddTemplate, ConcatTemplate, Dequa
     FloatReduceSumTemplate, GatherTemplate, QuantTemplate, RQSiGELUTemplate, SliceTemplate, iHardswishTemplate
 from Deeploy.Targets.Generic.TypeCheckers import AddChecker, ConcatChecker, ConvChecker, DequantChecker, \
     GatherChecker, GELUChecker, GEMMChecker, HardswishChecker, LayerNormChecker, MatMulChecker, MulChecker, \
+    RequantizedLayerNormChecker, RequantizedOpChecker, \
     QuantChecker, ReduceMeanChecker, ReluChecker, ReshapeChecker, RQAddChecker, RQHardswishChecker, SGDChecker, \
     SliceChecker, SoftmaxChecker, SoftmaxCrossEntropyLossChecker, TransposeChecker
 from Deeploy.Targets.PULPOpen.Bindings import ForkClosure, L3MemoryAwareFunctionCallClosure, \
@@ -422,7 +423,9 @@ GAP9MulBindings = [
 GAP9ReluBinding = NodeBinding(ReluChecker([PointerClass(float32_t)], [PointerClass(float32_t)]),
                               FloatReluTemplate.referenceTemplate, GAP9Transformer)
 
-from Deeploy.Targets.GAP9.Templates import FP16LayernormTemplate
+from Deeploy.Targets.GAP9.Templates import AddRequantShiftTemplate, AttentionInt8Template, DequantQuantTemplate, \
+    FP16LayernormTemplate, \
+    RequantizedLayernormTemplate, RequantizedTCneighborGatherTemplate
 
 GAP9LayernormBindings = [
     NodeBinding(
@@ -435,6 +438,15 @@ GAP9LayernormBindings = [
             [PointerClass(float32_t), PointerClass(float32_t),
              PointerClass(float32_t)], [PointerClass(float32_t)]),
         FloatLayernormTemplate.referenceTemplate, GAP9Transformer),
+]
+
+# Dequant -> LayerNorm -> Quant fused (GAP9RequantizedLayerNormPass): integer in, fp32 weight/bias, integer out
+GAP9RequantizedLayernormBindings = [
+    NodeBinding(
+        RequantizedLayerNormChecker([PointerClass(in_type), PointerClass(float32_t),
+                                     PointerClass(float32_t)], [PointerClass(out_type)]),
+        RequantizedLayernormTemplate.referenceTemplate, GAP9Transformer)
+    for in_type in (int8_t, uint8_t, int16_t) for out_type in (int8_t, uint8_t)
 ]
 
 GAP9FloatGELUBinding = NodeBinding(
@@ -504,6 +516,47 @@ TCneighborGatherBindings = [NodeBinding(ReluChecker([PointerClass(float32_t)], [
                             NodeBinding(ReluChecker([PointerClass(int8_t)], [PointerClass(int8_t)]),
                                                           TCneighborGather.referenceTemplate, GAP9Transformer)]
 
+
+# RequantShift -> TCneighborGather fused (GAP9RequantizedGatherPass)
+RequantizedTCneighborGatherBindings = [
+    NodeBinding(RequantizedOpChecker([PointerClass(int8_t), PointerClass(int32_t)], [PointerClass(int8_t)]),
+                RequantizedTCneighborGatherTemplate.referenceTemplate, GAP9Transformer)
+]
+
+# Add -> RequantShift fused (GAP9AddRequantShiftPass)
+GAP9AddRequantShiftBindings = [
+    NodeBinding(RequantizedOpChecker([PointerClass(int8_t), PointerClass(int8_t)], [PointerClass(int8_t)]),
+                AddRequantShiftTemplate.referenceTemplate, GAP9Transformer)
+]
+
+# Dequant -> Quant kept in fp32 (GAP9StripGraphOutputDequantPass)
+GAP9DequantQuantBindings = [
+    NodeBinding(RequantizedLayerNormChecker([PointerClass(in_type)], [PointerClass(out_type)]),
+                DequantQuantTemplate.referenceTemplate, GAP9Transformer)
+    for in_type in (int8_t, uint8_t, int16_t)
+    for out_type in (int8_t, uint8_t)
+]
+
+# Fused integer-IO softmax aggregation / scatter (GAP9AttentionInt8FusionPass)
+GAP9ColAttnPoolBindings = [
+    NodeBinding(
+        RequantizedLayerNormChecker([PointerClass(int8_t), PointerClass(int8_t), PointerClass(int32_t)],
+                                    [PointerClass(int8_t)]), AttentionInt8Template.colAttnPoolTemplate,
+        GAP9L2OnlyTransformerL1Transient)
+]
+GAP9ScatterQuantBindings = [
+    NodeBinding(
+        RequantizedLayerNormChecker([PointerClass(int16_t), PointerClass(int8_t), PointerClass(int32_t)],
+                                    [PointerClass(int8_t)]), AttentionInt8Template.scatterQuantTemplate,
+        GAP9L2OnlyTransformerL1Transient)
+]
+GAP9ScatterScatterRQLNBindings = [
+    NodeBinding(
+        RequantizedLayerNormChecker([
+            PointerClass(int16_t), PointerClass(int8_t), PointerClass(int8_t), PointerClass(int32_t),
+            PointerClass(float32_t), PointerClass(float32_t)
+        ], [PointerClass(int8_t)]), AttentionInt8Template.scatterScatterRQLNTemplate, GAP9L2OnlyTransformerL1Transient)
+]
 
 Instancenorm2dBindings = [NodeBinding(
     LayerNormChecker(

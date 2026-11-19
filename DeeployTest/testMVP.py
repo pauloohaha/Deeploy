@@ -18,6 +18,7 @@ from testUtils.graphDebug import generateDebugConfig
 from testUtils.platformMapping import mapDeployer, mapPlatform, setupMemoryPlatform
 from testUtils.testRunner import TestGeneratorArgumentParser
 from testUtils.tilingUtils import DBOnlyL3Tiler, DBTiler, SBTiler
+from testUtils.intIO import convertIntegerIO
 from testUtils.typeMapping import inferTypeAndOffset
 
 from Deeploy.DeeployTypes import CodeGenVerbosity, NetworkDeployer, ONNXLayer
@@ -71,6 +72,7 @@ def setupDeployer(graph: gs.Graph, memoryHierarchy: MemoryHierarchy, defaultTarg
 
     # Load as int64 and infer types later
     test_inputs = [inputs[x].reshape(-1).astype(np.float64) for x in inputs.files]
+    test_inputs, _ = convertIntegerIO(graph, test_inputs)
 
     platform, signProp = mapPlatform(args.platform)
 
@@ -251,6 +253,7 @@ if __name__ == '__main__':
         # Load as int64 and infer types later
         test_inputs = [inputs[x].reshape(-1).astype(np.float64) for x in inputs.files]
         test_outputs = [outputs[x].reshape(-1).astype(np.float64) for x in outputs.files]
+        test_inputs, test_outputs = convertIntegerIO(graph, test_inputs, test_outputs)
 
         # WIESEP: Hack to get CI running because only one specific array is used
         if "WaveFormer" in args.dir:

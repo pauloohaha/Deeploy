@@ -14,6 +14,7 @@ from Deeploy.Targets.GAP9.Bindings import GAP9AddBindings, GAP9ConcatBindings, G
     GAP9FloatDWConv2DBindings, GAP9FloatGELUBinding, GAP9FloatGEMMBindings, GAP9GatherBindings, \
     GAP9QuantBindings, GAP9DequantBindings, \
     GAP9iHardswishBindings, GAP9iRMSNormBindings, GAP9iRQSGELUBindings, GAP9LayernormBindings, GAP9MatMulBindings, \
+    GAP9RequantizedLayernormBindings, \
     GAP9MaxPool2DBindings, GAP9MulBindings, GAP9ReduceSumBindings, GAP9ReluBinding, GAP9ReshapeBindings, \
     GAP9RQAddBindings, GAP9RQSBindings, GAP9RQSConv2DBindings, GAP9RQSDWConv2DBindings, GAP9RQSGEMMBindings, \
     GAP9RQSiHardswishBindings, GAP9RQSMatrixVecBindings, GAP9RQSTallGEMMBindings, GAP9SGDBindings, \
@@ -22,7 +23,11 @@ from Deeploy.Targets.GAP9.Bindings import GAP9AddBindings, GAP9ConcatBindings, G
     GAP9NE16RQSGEMMBindings, GAP9NE16GEMMInt32Bindings, \
     CustomColSoftmaxBindings, \
     CustomColSumBindings, CustomColScatterBindings, CustomElementMulBindings, GAP9FloatDWConv2DBindings, \
-    FloatSigmoidBindings, TCneighborGatherBindings, Instancenorm2dBindings
+    FloatSigmoidBindings, TCneighborGatherBindings, Instancenorm2dBindings, RequantizedTCneighborGatherBindings, \
+    GAP9AddRequantShiftBindings, GAP9DequantQuantBindings, GAP9ColAttnPoolBindings, GAP9ScatterQuantBindings, \
+    GAP9ScatterScatterRQLNBindings
+from Deeploy.Targets.GAP9.TileConstraints.WholeTensorTileConstraint import ColAttnPoolTileConstraint, \
+    ScatterQuantTileConstraint, ScatterScatterRQLNTileConstraint
 
 
 from Deeploy.Targets.Generic.TileConstraints.AddTileConstraint import AddTileConstraint
@@ -141,6 +146,8 @@ GAP9ReluTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = [GAP9ReluBi
 
 GAP9LayernormTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9LayernormBindings,
                                                            tileConstraint = LayernormTileConstraint())
+GAP9RequantizedLayernormTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9RequantizedLayernormBindings,
+                                                                      tileConstraint = LayernormTileConstraint())
 
 GAP9FPGELUTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = [GAP9FloatGELUBinding],
                                                         tileConstraint = UnaryTileConstraint())
@@ -181,12 +188,26 @@ FloatSigmoidTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = FloatSi
 
 TCneighborGatherTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = TCneighborGatherBindings,
                                                       tileConstraint = TCneighborGatherConstrain())
+RequantizedTCneighborGatherTilingReadyBindings = TilingReadyNodeBindings(
+    nodeBindings = RequantizedTCneighborGatherBindings, tileConstraint = TCneighborGatherConstrain())
+GAP9AddRequantShiftTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9AddRequantShiftBindings,
+                                                                 tileConstraint = AddTileConstraint())
 
 Instancenorm2dTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = Instancenorm2dBindings,
                                                            tileConstraint = Instancenorm2dTileConstraint())
 
 QuantTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9QuantBindings,
                                                            tileConstraint = UnaryTileConstraint())
+
+GAP9ColAttnPoolTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9ColAttnPoolBindings,
+                                                             tileConstraint = ColAttnPoolTileConstraint())
+GAP9ScatterQuantTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9ScatterQuantBindings,
+                                                              tileConstraint = ScatterQuantTileConstraint())
+GAP9ScatterScatterRQLNTilingReadyBindings = TilingReadyNodeBindings(
+    nodeBindings = GAP9ScatterScatterRQLNBindings, tileConstraint = ScatterScatterRQLNTileConstraint())
+
+GAP9DequantQuantTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9DequantQuantBindings,
+                                                              tileConstraint = UnaryTileConstraint())
 
 DeQuantTilingReadyBindings = TilingReadyNodeBindings(nodeBindings = GAP9DequantBindings,
                                                            tileConstraint = UnaryTileConstraint())
